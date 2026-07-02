@@ -20,7 +20,7 @@ const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slic
 const Header = ({ toggleSidebar }: HeaderProps) => {
   const { currentUser, userData, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { dueRules, refetch } = useRecurringReminders();
+  const { dueRules } = useRecurringReminders();
   const [showReminders, setShowReminders] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
@@ -42,7 +42,6 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
         lastCreatedDate: new Date().toISOString().split('T')[0],
       });
       toast.success('Transaction added from recurring rule');
-      refetch();
     } catch (err) {
       console.error('Error confirming recurring transaction:', err);
       toast.error('Failed to add transaction');
@@ -58,7 +57,6 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
         nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth),
       });
       toast.info('Recurring transaction skipped');
-      refetch();
     } catch (err) {
       console.error('Error skipping recurring transaction:', err);
       toast.error('Failed to skip recurring transaction');
