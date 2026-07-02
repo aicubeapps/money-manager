@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { HiPencil, HiTrash, HiPlus } from 'react-icons/hi';
 import { formatCurrency } from '../../utils/format';
 import { getMiscAmount, sumAllocations } from '../../utils/budget';
-import type { Budget, Category } from '../../types';
+import { getCategorySpend } from '../../utils/budgetSpend';
+import type { Budget, Category, Tag, Transaction } from '../../types';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
 
 interface BudgetListProps {
   budgets: Budget[];
   categories: Category[];
+  transactions: Transaction[];
+  tags: Tag[];
   onEdit: (budget: Budget) => void;
   onDelete: (id: string) => void;
   onAdd: () => void;
@@ -16,7 +19,7 @@ interface BudgetListProps {
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const BudgetList = ({ budgets, categories, onEdit, onDelete, onAdd }: BudgetListProps) => {
+const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete, onAdd }: BudgetListProps) => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const getCategoryInfo = (categoryId: string) => {
@@ -88,10 +91,25 @@ const BudgetList = ({ budgets, categories, onEdit, onDelete, onAdd }: BudgetList
                 <div className="space-y-1.5">
                   {budget.allocations.map((allocation) => {
                     const { name, icon } = getCategoryInfo(allocation.categoryId);
+                    const spend = getCategorySpend(transactions, tags, allocation.categoryId, budget.month, budget.year);
+                    const percentage = allocation.amount > 0 ? (spend / allocation.amount) * 100 : 0;
+                    const isOver = percentage >= 100;
+                    const isWarning = percentage >= 80 && !isOver;
+
                     return (
                       <div key={allocation.categoryId} className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
                           <span>{icon}</span> {name}
+                          {isOver && (
+                            <span className="badge text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">
+                              Over budget
+                            </span>
+                          )}
+                          {isWarning && (
+                            <span className="badge text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30">
+                              {Math.round(percentage)}% used
+                            </span>
+                          )}
                         </span>
                         <span className="font-medium text-gray-700 dark:text-gray-200">{formatCurrency(allocation.amount)}</span>
                       </div>
