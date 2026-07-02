@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    function isOwnerCreate() {
+      return isSignedIn() &&
+             request.auth.uid == request.resource.data.userId;
+    }
+    function isOwnerUpdate() {
+      return isSignedIn() &&
+             request.auth.uid == resource.data.userId &&
+             request.resource.data.userId == resource.data.userId;
+    }
+    match /users/{userId} {
+      allow create, read, delete:
+        if isOwner(userId);
+      allow update:
+        if isOwner(userId);
+    }
+    match /accounts/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /categories/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /transactions/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /budgets/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /reports/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /recurringRules/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /tags/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /tagRules/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
