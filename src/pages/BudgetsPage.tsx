@@ -9,6 +9,7 @@ import BudgetList from '../components/budgets/BudgetList';
 import BudgetForm from '../components/budgets/BudgetForm';
 import { createBudget, updateBudget, deleteBudget } from '../services/budgetService';
 import { isCategoryOvershot } from '../utils/budgetSpend';
+import { mergeAllocations } from '../utils/budget';
 import { toast } from '../components/common/Toast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import type { Budget } from '../types';
@@ -88,14 +89,29 @@ const BudgetsPage = () => {
     }
   };
 
-  const handleAdd = () => { setEditingBudget(null); setShowForm(true); };
+  // "Add Budget" used to always open the form in create mode, even when a
+  // budget doc already existed for the month being viewed — every save then
+  // called createBudget, producing a second doc for the same userId/month/year
+  // (BudgetList renders one card per doc AND sums `amount` across all of them
+  // for "Total Budgeted", so duplicates showed as extra cards with an
+  // inflated total). Since `budgets` here is already scoped to
+  // selectedMonth/selectedYear by useBudgets, budgets[0] (if present) IS the
+  // existing doc for the month being viewed — open it for editing instead.
+  const handleAdd = () => { setEditingBudget(budgets[0] ?? null); setShowForm(true); };
   const handleEdit = (budget: Budget) => { setEditingBudget(budget); setShowForm(true); };
 
   const handleSave = async (data: { month: number; year: number; amount: number; allocations: { categoryId: string; amount: number }[] }) => {
     if (!currentUser) return;
     try {
-      if (editingBudget) {
-        await updateBudget(editingBudget.id, data);
+      // Safety net in addition to the handleAdd fix above: re-check for an
+      // existing doc for the month right before deciding create vs update,
+      // in case editingBudget is stale (e.g. state not set for some reason).
+      const existing = editingBudget ?? budgets[0] ?? null;
+      if (existing) {
+        const merged = editingBudget
+          ? data.allocations // form was initialized from the existing doc, so this is already the full merged set
+          : mergeAllocations(existing.allocations, data.allocations);
+        await updateBudget(existing.id, { ...data, allocations: merged, month: selectedMonth, year: selectedYear });
         toast.success('Budget updated');
       } else {
         await createBudget(currentUser.uid, { ...data, month: selectedMonth, year: selectedYear });
