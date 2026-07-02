@@ -6,6 +6,8 @@ import {
   HiTrash,
   HiPlus,
   HiInformationCircle,
+  HiStar,
+  HiX,
 } from 'react-icons/hi';
 import { FaWallet, FaCreditCard, FaUniversity } from 'react-icons/fa';
 import type { Account, Transaction } from '../../types';
@@ -15,6 +17,9 @@ import { calculateAccountBalance } from '../../utils/accountBalance';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
 import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
+import QuickAddModal from '../common/QuickAddModal';
+import SwipeableAccountCard from './SwipeableAccountCard';
+import { toast } from '../common/Toast';
 
 interface AccountListProps {
   accounts: Account[];
@@ -49,6 +54,13 @@ const AccountList = ({
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
   const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
+  const [quickAddAccountId, setQuickAddAccountId] = useState<string | null>(null);
+  const [contextMenuAccount, setContextMenuAccount] = useState<Account | null>(null);
+
+  const handleSetDefaultQuickAdd = (account: Account) => {
+    localStorage.setItem('lastExpenseAccount', account.id);
+    toast.success(`${account.name} set as default for Quick Add`);
+  };
 
   const deleteTargetTxCount = useMemo(() => {
     if (!deleteTarget) return 0;
@@ -313,14 +325,18 @@ const AccountList = ({
                 : null;
 
             return (
-              <div
+              <SwipeableAccountCard
                 key={account.id}
-                onClick={() => setDrillDown({
+                onTap={() => setDrillDown({
                   title: `${account.name} · Recent Transactions`,
                   filter: { kind: 'account', accountId: account.id, limit: 10 },
                 })}
-                role="button"
-                tabIndex={0}
+                onEdit={() => onEdit(account)}
+                onDelete={() => setDeleteTarget(account.id)}
+                onSwipeRightQuickAdd={() => setQuickAddAccountId(account.id)}
+                onLongPress={() => setContextMenuAccount(account)}
+              >
+              <div
                 className={`card p-4 border-l-4 ${color.border} transition-all duration-150 hover:shadow-md group flex flex-col min-h-[130px] cursor-pointer ${
                   !account.active ? 'opacity-60' : ''
                 }`}
@@ -432,6 +448,7 @@ const AccountList = ({
                   </span>
                 )}
               </div>
+              </SwipeableAccountCard>
             );
           })}
         </div>
@@ -477,6 +494,54 @@ const AccountList = ({
           filter={drillDown.filter}
           onClose={() => setDrillDown(null)}
         />
+      )}
+
+      <QuickAddModal
+        isOpen={quickAddAccountId !== null}
+        presetAccountId={quickAddAccountId ?? undefined}
+        onClose={() => setQuickAddAccountId(null)}
+      />
+
+      {contextMenuAccount && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in"
+          onClick={() => setContextMenuAccount(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white truncate pr-3">{contextMenuAccount.name}</h3>
+              <button
+                onClick={() => setContextMenuAccount(null)}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+              >
+                <HiX className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-2">
+              <button
+                onClick={() => { onEdit(contextMenuAccount); setContextMenuAccount(null); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <HiPencil className="w-4 h-4 text-gray-400" /> Edit
+              </button>
+              <button
+                onClick={() => { handleSetDefaultQuickAdd(contextMenuAccount); setContextMenuAccount(null); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <HiStar className="w-4 h-4 text-gray-400" /> Set as default for Quick Add
+              </button>
+              <button
+                onClick={() => { setDeleteTarget(contextMenuAccount.id); setContextMenuAccount(null); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <HiTrash className="w-4 h-4" /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

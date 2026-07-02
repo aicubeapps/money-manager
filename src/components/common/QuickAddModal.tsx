@@ -11,11 +11,15 @@ import type { Tag } from '../../types';
 type QuickAddModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  /** Preselects this account, overriding the last-used account from localStorage.
+   * Used by AccountList's swipe-right-to-quick-add gesture. */
+  presetAccountId?: string;
 };
 
 const QuickAddModal = ({
   isOpen,
   onClose,
+  presetAccountId,
 }: QuickAddModalProps) => {
   const { currentUser } = useAuth();
   const { accounts } = useAccounts();
@@ -49,6 +53,22 @@ const QuickAddModal = ({
     if (!isOpen || !currentUser) return;
     getTags(currentUser.uid).then(setTags).catch(() => {});
   }, [isOpen, currentUser]);
+
+  // This modal is mounted once by FloatingActionButton and never remounted
+  // (isOpen just toggles an early return), so the useState initializers above
+  // only ever read localStorage on the very first mount. Re-sync accountId
+  // every time it opens so both a fresh "Set as default" write and an
+  // explicit preset (swipe-right on an account card) are picked up. Adjusting
+  // state during render (React's documented pattern for this) instead of an
+  // effect, so it applies in the same render rather than causing an extra one.
+  const [lastSyncedOpenState, setLastSyncedOpenState] = useState<string | null>(null);
+  const openSyncKey = isOpen ? `open|${presetAccountId ?? ''}` : null;
+  if (openSyncKey && openSyncKey !== lastSyncedOpenState) {
+    setLastSyncedOpenState(openSyncKey);
+    setAccountId(presetAccountId || localStorage.getItem('lastExpenseAccount') || '');
+  } else if (!isOpen && lastSyncedOpenState !== null) {
+    setLastSyncedOpenState(null);
+  }
 
   const topTags = getTopUsedTags(tags, transactions, 5);
 
