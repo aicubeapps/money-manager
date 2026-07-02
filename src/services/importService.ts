@@ -15,12 +15,21 @@ export interface ImportRow {
   error?: string;
 }
 
+// Columns are identified by their index in the parsed header row, not by
+// name — some bank exports reuse the same header text for multiple columns
+// (e.g. Kotak's two "Dr / Cr" columns), which would make a name-based
+// mapping unable to tell them apart. -1 means "not selected".
 export interface ColumnMapping {
-  dateColumn: string;
-  descriptionColumn: string;
-  amountColumn: string;
-  debitColumn?: string;
-  creditColumn?: string;
+  dateColumn: number;
+  descriptionColumn: number;
+  amountColumn: number;
+  debitColumn?: number;
+  creditColumn?: number;
+  // Alternative to debitColumn/creditColumn: a single amountColumn paired
+  // with a flag-style column indicating debit vs credit (e.g. Kotak's
+  // "Dr / Cr" column). Only consulted when debitColumn/creditColumn aren't
+  // mapped — see mapRowsToImportRows.
+  directionColumn?: number;
 }
 
 // Basic CSV parsing that handles quoted fields (including embedded commas and escaped quotes "")
@@ -156,14 +165,19 @@ export const mapRowsToImportRows = (
   mapping: ColumnMapping,
   _accountId: string
 ): ImportRow[] => {
-  const { headers, rows } = rawRows;
-  const columnIndex = (name?: string) => (name ? headers.indexOf(name) : -1);
+  const { rows } = rawRows;
 
-  const dateIdx = columnIndex(mapping.dateColumn);
-  const descriptionIdx = columnIndex(mapping.descriptionColumn);
-  const amountIdx = columnIndex(mapping.amountColumn);
-  const debitIdx = columnIndex(mapping.debitColumn);
-  const creditIdx = columnIndex(mapping.creditColumn);
+  const dateIdx = mapping.dateColumn;
+  const descriptionIdx = mapping.descriptionColumn;
+  const amountIdx = mapping.amountColumn;
+  const debitIdx = mapping.debitColumn ?? -1;
+  const creditIdx = mapping.creditColumn ?? -1;
+  const directionIdx = mapping.directionColumn ?? -1;
+
+  // Flag-style Dr/Cr indicator values recognized when amountColumn is paired
+  // with directionColumn instead of separate debit/credit amount columns.
+  const CREDIT_INDICATORS = new Set(['cr', 'credit', 'c']);
+  const DEBIT_INDICATORS = new Set(['dr', 'debit', 'd']);
 
   return rows.map((row, index) => {
     const rawDate = dateIdx >= 0 ? row[dateIdx] || '' : '';
@@ -174,6 +188,23 @@ export const mapRowsToImportRows = (
     const creditValue = creditIdx >= 0 ? row[creditIdx] || '' : '';
     if (!rawAmount && (debitValue || creditValue)) {
       rawAmount = debitValue || creditValue;
+    }
+
+    // Flag-style Dr/Cr column: only consulted when no separate debit/credit
+    // amount columns are mapped — those take priority (see inferredType
+    // below), matching how debit/credit amount columns already take
+    // priority over sign-based inference.
+    let directionType: 'expense' | 'income' | undefined;
+    let directionError: string | undefined;
+    if (debitIdx < 0 && creditIdx < 0 && directionIdx >= 0) {
+      const directionValue = (row[directionIdx] || '').trim().toLowerCase();
+      if (CREDIT_INDICATORS.has(directionValue)) {
+        directionType = 'income';
+      } else if (DEBIT_INDICATORS.has(directionValue)) {
+        directionType = 'expense';
+      } else {
+        directionError = 'unrecognized debit/credit indicator';
+      }
     }
 
     const importRow: ImportRow = {
@@ -195,6 +226,8 @@ export const mapRowsToImportRows = (
     const numericAmount = Number(rawAmount.replace(/[^0-9.-]/g, ''));
     if (rawAmount === '' || Number.isNaN(numericAmount)) {
       importRow.error = importRow.error || 'invalid amount';
+    } else if (directionError) {
+      importRow.error = importRow.error || directionError;
     } else {
       importRow.parsedAmount = Math.abs(numericAmount);
 
@@ -203,6 +236,8 @@ export const mapRowsToImportRows = (
         inferredType = 'expense';
       } else if (creditValue) {
         inferredType = 'income';
+      } else if (directionType) {
+        inferredType = directionType;
       } else {
         inferredType = numericAmount < 0 ? 'expense' : 'income';
       }
