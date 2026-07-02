@@ -114,6 +114,28 @@ export interface Report {
   generatedAt: Date;
 }
 
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurringRule {
+  id: string;
+  userId: string;
+  templateTransaction: {
+    type: TransactionType;
+    amount: number;
+    accountId: string;
+    categoryId: string;
+    description: string;
+    tags?: string[];
+  };
+  frequency: RecurringFrequency;
+  dayOfMonth?: number;
+  startDate: string;
+  nextDueDate: string;
+  lastCreatedDate?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface Backup {
   id: string;
   userId: string;
