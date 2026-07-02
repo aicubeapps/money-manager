@@ -25,10 +25,17 @@ export const useAccounts = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const accountsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Account[];
+        const accountsData = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          // Convert Firestore Timestamps to JavaScript Date
+          return {
+            id: doc.id,
+            ...data,
+            openingDate: data.openingDate?.toDate ? data.openingDate.toDate() : new Date(data.openingDate),
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt),
+          } as Account;
+        });
         setAccounts(accountsData);
         setLoading(false);
         setError(null);

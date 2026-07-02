@@ -3,9 +3,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { HiX } from 'react-icons/hi';
-import type { Transaction, Account, Category, Tag } from '../../types';
+import type { Transaction, Account, Category, CategoryType, Tag } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { getTags, createTag } from '../../services/tagService';
+import { createCategory } from '../../services/categoryService';
+import { toast } from '../common/Toast';
 
 const transactionSchema = z
   .object({
@@ -18,6 +20,10 @@ const transactionSchema = z
     categoryId: z.string().optional(),
     notes: z.string().optional(),
     tagId: z.string().optional(),
+    isRecurring: z.boolean().optional(),
+    recurringFrequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
+    recurringDayOfMonth: z.number().optional(),
+    recurringStartDate: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -34,6 +40,27 @@ const transactionSchema = z
       return true;
     },
     { message: 'Transfer requires two different accounts', path: ['fromAccountId'] }
+  )
+  .refine(
+    (data) => {
+      if (!data.isRecurring) return true;
+      return !!data.recurringFrequency && !!data.recurringStartDate;
+    },
+    { message: 'Frequency and start date are required for recurring transactions', path: ['recurringFrequency'] }
+  )
+  .refine(
+    (data) => {
+      if (!data.isRecurring) return true;
+      if (data.recurringFrequency === 'monthly' || data.recurringFrequency === 'yearly') {
+        return (
+          typeof data.recurringDayOfMonth === 'number' &&
+          data.recurringDayOfMonth >= 1 &&
+          data.recurringDayOfMonth <= 31
+        );
+      }
+      return true;
+    },
+    { message: 'Day of month must be between 1 and 31', path: ['recurringDayOfMonth'] }
   );
 
 type FormData = z.infer<typeof transactionSchema>;
@@ -58,6 +85,11 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [creatingTag, setCreatingTag] = useState(false);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryType, setNewCategoryType] = useState<CategoryType>('expense');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   const {
     register,
@@ -79,16 +111,44 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
           categoryId: transaction.categoryId || '',
           notes: transaction.notes || '',
           tagId: transaction.tags?.[0] || '',
+          isRecurring: false,
         }
       : {
           type: 'expense',
           date: new Date().toISOString().split('T')[0],
           amount: undefined,
           tagId: '',
+          isRecurring: false,
         },
   });
 
   const transactionType = watch('type');
+  const isRecurring = watch('isRecurring');
+  const recurringFrequency = watch('recurringFrequency');
+  const dateValue = watch('date');
+  const recurringStartDate = watch('recurringStartDate');
+  const recurringDayOfMonth = watch('recurringDayOfMonth');
+
+  // Default the recurrence start date to the transaction's own date the first
+  // time the toggle is turned on, without overwriting a value the user already set.
+  useEffect(() => {
+    if (isRecurring && !recurringStartDate) {
+      setValue('recurringStartDate', dateValue);
+    }
+  }, [isRecurring, dateValue, recurringStartDate, setValue]);
+
+  // Default "day of month" to the day-of-month of the recurrence start date,
+  // only once monthly/yearly is selected and only if not already set.
+  useEffect(() => {
+    if (
+      isRecurring &&
+      (recurringFrequency === 'monthly' || recurringFrequency === 'yearly') &&
+      !recurringDayOfMonth
+    ) {
+      const anchor = recurringStartDate || dateValue;
+      if (anchor) setValue('recurringDayOfMonth', new Date(anchor).getDate());
+    }
+  }, [isRecurring, recurringFrequency, recurringStartDate, dateValue, recurringDayOfMonth, setValue]);
 
   // Fetch tags once when the form opens
   useEffect(() => {
@@ -119,6 +179,30 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
     }
   };
 
+  const handleCreateCategoryInline = async () => {
+    if (!currentUser || !newCategoryName.trim()) return;
+    setCreatingCategory(true);
+    try {
+      const category = await createCategory(currentUser.uid, {
+        name: newCategoryName.trim(),
+        type: newCategoryType,
+        icon: '📌',
+        color: '#6366f1',
+        active: true,
+      });
+      setLocalCategories((prev) => [...prev, category]);
+      setValue('categoryId', category.id);
+      setShowNewCategory(false);
+      setNewCategoryName('');
+      toast.success('Category created');
+    } catch (err) {
+      console.error('Error creating category:', err);
+      toast.error('Failed to create category');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
   useEffect(() => {
     if (transaction) {
       reset({
@@ -131,6 +215,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
         categoryId: transaction.categoryId || '',
         notes: transaction.notes || '',
         tagId: transaction.tags?.[0] || '',
+        isRecurring: false,
       });
     }
   }, [transaction, reset]);
@@ -151,13 +236,30 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
     }
     if (data.notes) payload.notes = data.notes;
     if (data.tagId) payload.tags = [data.tagId];
+    if (data.isRecurring && data.recurringFrequency && data.recurringStartDate) {
+      payload.recurringRule = {
+        frequency: data.recurringFrequency,
+        dayOfMonth:
+          data.recurringFrequency === 'monthly' || data.recurringFrequency === 'yearly'
+            ? data.recurringDayOfMonth
+            : undefined,
+        startDate: data.recurringStartDate,
+      };
+    }
     onSave(payload);
   };
 
   const getCategories = () => {
-    if (transactionType === 'expense') return expenseCategories.filter(c => c.active);
-    if (transactionType === 'income') return incomeCategories.filter(c => c.active);
-    return [];
+    const base =
+      transactionType === 'expense'
+        ? expenseCategories.filter((c) => c.active)
+        : transactionType === 'income'
+          ? incomeCategories.filter((c) => c.active)
+          : [];
+    const extras = localCategories.filter(
+      (c) => c.type === transactionType && !base.some((b) => b.id === c.id)
+    );
+    return [...base, ...extras];
   };
 
   const activeAccounts = accounts.filter((a) => a.active);
@@ -259,12 +361,76 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
           {transactionType !== 'transfer' && (
             <div>
               <label className="form-label">Category</label>
-              <select {...register('categoryId')} className="form-input">
+              <select
+                value={showNewCategory ? '__new__' : watch('categoryId') || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '__new__') {
+                    setNewCategoryType(transactionType === 'income' ? 'income' : 'expense');
+                    setShowNewCategory(true);
+                  } else {
+                    setShowNewCategory(false);
+                    setValue('categoryId', val);
+                  }
+                }}
+                className="form-input"
+              >
                 <option value="">— Uncategorized —</option>
                 {getCategories().map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.icon || '📌'} {cat.name}</option>
                 ))}
+                <option value="__new__">+ Add new category</option>
               </select>
+
+              {showNewCategory && (
+                <div className="mt-2 p-3 border border-gray-200 dark:border-gray-700 rounded-xl space-y-2">
+                  <input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="form-input"
+                    placeholder="New category name"
+                    autoFocus
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['expense', 'income'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setNewCategoryType(t)}
+                        className={`border-2 rounded-lg py-1.5 text-xs font-medium capitalize transition-all ${
+                          newCategoryType === t
+                            ? t === 'expense'
+                              ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                              : 'border-green-400 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                            : 'border-gray-200 dark:border-gray-600 text-gray-500'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewCategory(false);
+                        setNewCategoryName('');
+                      }}
+                      className="btn-secondary flex-1 justify-center text-sm py-1.5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateCategoryInline}
+                      disabled={creatingCategory || !newCategoryName.trim()}
+                      className="btn-primary flex-1 justify-center text-sm py-1.5 disabled:opacity-50"
+                    >
+                      {creatingCategory ? 'Adding...' : 'Add category'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -313,6 +479,60 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
                 Add
               </button>
             </div>
+          </div>
+
+          {/* Recurring */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                {...register('isRecurring')}
+                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-500 focus:ring-primary-400"
+              />
+              <span className="form-label mb-0">Make this recurring</span>
+            </label>
+
+            {isRecurring && (
+              <div className="mt-3 space-y-3 border border-gray-200 dark:border-gray-700 rounded-xl p-3">
+                <div>
+                  <label className="form-label">Frequency</label>
+                  <select {...register('recurringFrequency')} className="form-input">
+                    <option value="">Select frequency</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                  {errors.recurringFrequency && (
+                    <p className="text-red-500 text-xs mt-1">{errors.recurringFrequency.message}</p>
+                  )}
+                </div>
+
+                {(recurringFrequency === 'monthly' || recurringFrequency === 'yearly') && (
+                  <div>
+                    <label className="form-label">Day of month</label>
+                    <input
+                      {...register('recurringDayOfMonth', { valueAsNumber: true })}
+                      type="number"
+                      min="1"
+                      max="31"
+                      className="form-input"
+                    />
+                    {errors.recurringDayOfMonth && (
+                      <p className="text-red-500 text-xs mt-1">{errors.recurringDayOfMonth.message}</p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label className="form-label">Recurrence start date</label>
+                  <input {...register('recurringStartDate')} type="date" className="form-input" />
+                  {errors.recurringStartDate && (
+                    <p className="text-red-500 text-xs mt-1">{errors.recurringStartDate.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}

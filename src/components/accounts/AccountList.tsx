@@ -11,6 +11,7 @@ import { FaWallet, FaCreditCard, FaUniversity } from 'react-icons/fa';
 import type { Account, Transaction } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { getAccountIcon, getAccountColor } from '../../utils/accountHelpers';
+import { calculateAccountBalance } from '../../utils/accountBalance';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
 
@@ -83,10 +84,10 @@ const AccountList = ({
   const totalAssetBalance = useMemo(
     () =>
       assetAccounts.reduce(
-        (sum, acc) => sum + (Number(acc.openingBalance) || 0),
+        (sum, acc) => sum + calculateAccountBalance(acc, transactions),
         0
       ),
-    [assetAccounts]
+    [assetAccounts, transactions]
   );
 
   const totalCreditLimit = useMemo(
@@ -101,10 +102,10 @@ const AccountList = ({
   const totalAvailableCredit = useMemo(
     () =>
       creditAccounts.reduce(
-        (sum, acc) => sum + (Number(acc.openingBalance) || 0),
+        (sum, acc) => sum + calculateAccountBalance(acc, transactions),
         0
       ),
-    [creditAccounts]
+    [creditAccounts, transactions]
   );
 
   const totalAmountOwed = Math.max(totalCreditLimit - totalAvailableCredit, 0);
@@ -301,9 +302,8 @@ const AccountList = ({
             const color = getAccountColor(account.type);
 
             const isCredit = account.type === 'credit';
-            const availableCredit = isCredit
-              ? Number(account.openingBalance) || 0
-              : null;
+            const currentBalance = calculateAccountBalance(account, transactions);
+            const availableCredit = isCredit ? currentBalance : null;
             const totalLimit = isCredit ? Number(account.creditLimit) || 0 : null;
             const amountOwed =
               isCredit && totalLimit !== null && availableCredit !== null
@@ -374,7 +374,7 @@ const AccountList = ({
                 {!isCredit ? (
                   <>
                     <div className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                      {formatCurrency(account.openingBalance)}
+                      {formatCurrency(currentBalance)}
                     </div>
                     <div className="text-xs text-gray-400 dark:text-gray-500">
                       Opened {new Date(account.openingDate).toLocaleDateString()}

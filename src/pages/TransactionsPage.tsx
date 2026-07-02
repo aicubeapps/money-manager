@@ -7,6 +7,8 @@ import { useCategories } from '../hooks/useCategories';
 import TransactionList from '../components/transactions/TransactionList';
 import TransactionForm from '../components/transactions/TransactionForm';
 import { createTransaction, updateTransaction, deleteTransaction } from '../services/transactionService';
+import { createRecurringRule } from '../services/firestore/recurringRules';
+import { calculateNextDueDate } from '../utils/recurringDates';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from '../components/common/Toast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -28,14 +30,42 @@ const TransactionsPage = () => {
 
   const handleSave = async (data: any) => {
     if (!currentUser) return;
+    const { recurringRule, ...transactionData } = data;
     try {
       if (editingTransaction) {
-        await updateTransaction(editingTransaction.id, data);
-        toast.success('Transaction updated');
+        await updateTransaction(editingTransaction.id, transactionData);
       } else {
-        await createTransaction(currentUser.uid, data);
-        toast.success('Transaction added');
+        await createTransaction(currentUser.uid, transactionData);
       }
+
+      let message = editingTransaction ? 'Transaction updated' : 'Transaction added';
+
+      if (recurringRule) {
+        const nextDueDate = calculateNextDueDate(
+          recurringRule.startDate,
+          recurringRule.frequency,
+          recurringRule.dayOfMonth
+        );
+        await createRecurringRule(currentUser.uid, {
+          templateTransaction: {
+            type: transactionData.type,
+            amount: transactionData.amount,
+            accountId: transactionData.accountId,
+            categoryId: transactionData.categoryId || '',
+            description: transactionData.notes || '',
+            ...(transactionData.tags && transactionData.tags.length > 0
+              ? { tags: transactionData.tags }
+              : {}),
+          },
+          frequency: recurringRule.frequency,
+          dayOfMonth: recurringRule.dayOfMonth,
+          startDate: recurringRule.startDate,
+          nextDueDate,
+        });
+        message += ' and recurring rule created';
+      }
+
+      toast.success(message);
       setShowForm(false);
       setEditingTransaction(null);
     } catch (err) {

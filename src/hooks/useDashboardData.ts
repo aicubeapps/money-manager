@@ -3,6 +3,7 @@ import { useAccounts } from './useAccounts';
 import { useTransactions } from './useTransactions';
 import { useCategories } from './useCategories';
 import { getDateRange, getPreviousPeriod } from '../utils/dateUtils';
+import { calculateAccountBalance } from '../utils/accountBalance';
 import type { TimeView } from '../utils/dateUtils';
 import {
   startOfDay, endOfDay,
@@ -73,12 +74,13 @@ export const useDashboardData = (view: TimeView = 'month') => {
       // transfers ignored for income/expense
     });
 
-    // Net worth = sum of account opening balances + all income - all expenses (approximation)
-    // More precise: sum of current balances = sum of opening balances + total income - total expense
-    const totalOpening = accounts.reduce((sum, a) => sum + a.openingBalance, 0);
-    const allIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const allExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const netWorth = totalOpening + allIncome - allExpense;
+    // Net worth includes only asset accounts (savings/cash/UPI/etc.) — credit
+    // accounts are liabilities and must be fully excluded, not netted against
+    // anything. Uses calculateAccountBalance so it reflects real transaction
+    // activity per account (income/expense/transfers), not just openingBalance.
+    const netWorth = accounts
+      .filter((a) => a.accountGroup === 'asset')
+      .reduce((sum, a) => sum + calculateAccountBalance(a, transactions), 0);
 
     // Expense by category (for selected period)
     const expenseByCategoryMap = new Map<string, number>();
@@ -157,19 +159,11 @@ export const useDashboardData = (view: TimeView = 'month') => {
       loan: '#EF4444',
       investment: '#14B8A6',
     };
-    const accountDistribution = accounts.map((acc) => {
-      const accTxs = transactions.filter(t => t.accountId === acc.id);
-      let balance = acc.openingBalance;
-      accTxs.forEach(t => {
-        if (t.type === 'income') balance += t.amount;
-        else if (t.type === 'expense') balance -= t.amount;
-        else if (t.type === 'transfer') {
-          if (t.fromAccountId === acc.id) balance -= t.amount;
-          if (t.toAccountId === acc.id) balance += t.amount;
-        }
-      });
-      return { name: acc.name, value: balance, color: typeColorMap[acc.type] || '#6B7280' };
-    });
+    const accountDistribution = accounts.map((acc) => ({
+      name: acc.name,
+      value: calculateAccountBalance(acc, transactions),
+      color: typeColorMap[acc.type] || '#6B7280',
+    }));
 
     // Previous period change
     const prevPeriod = getPreviousPeriod(view, now);

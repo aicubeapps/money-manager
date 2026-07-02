@@ -179,23 +179,3 @@ export const fetchTransactions = async (
     } as Transaction;
   });
 };
-
-// Calculate account balance
-export const calculateAccountBalance = async (accountId: string) => {
-  const q = query(
-    collection(db, COLLECTION),
-    where('accountId', '==', accountId)
-  );
-  const snapshot = await getDocs(q);
-  let balance = 0;
-  snapshot.docs.forEach((doc) => {
-    const data = doc.data();
-    if (data.type === 'expense') balance -= data.amount;
-    if (data.type === 'income') balance += data.amount;
-    if (data.type === 'transfer') {
-      if (data.fromAccountId === accountId) balance -= data.amount;
-      if (data.toAccountId === accountId) balance += data.amount;
-    }
-  });
-  return balance;
-};
