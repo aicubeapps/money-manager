@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { formatCurrency } from '../../utils/format';
 import { HiTrendingUp, HiTrendingDown, HiMinus } from 'react-icons/hi';
+import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
+import type { Account } from '../../types';
 
 interface SummaryCardsProps {
   netWorth: number;
@@ -11,6 +14,9 @@ interface SummaryCardsProps {
     expense: number;
     savings: number;
   };
+  /** Needed to resolve which accountIds make up the "asset" group for the
+   * Net Worth card drill-down (accountGroup === 'asset'). */
+  accounts: Account[];
 }
 
 const SummaryCards = ({
@@ -19,7 +25,10 @@ const SummaryCards = ({
   monthlyExpense,
   monthlySavings,
   previousPeriodChange,
+  accounts,
 }: SummaryCardsProps) => {
+  const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
+  const assetAccountIds = accounts.filter((a) => a.accountGroup === 'asset').map((a) => a.id);
   const getChangeBadge = (change: number, invertColor = false) => {
     if (change === 0) {
       return (
@@ -50,6 +59,13 @@ const SummaryCards = ({
       bg: 'from-primary-50 to-indigo-50 dark:from-primary-900/20 dark:to-indigo-900/20',
       badge: null,
       icon: '🏦',
+      // Net Worth is the sum of asset-group accounts — drill down into that group's transactions.
+      onClick: assetAccountIds.length > 0
+        ? () => setDrillDown({
+            title: 'Net Worth · Asset Account Transactions',
+            filter: { kind: 'accountGroup', accountIds: assetAccountIds },
+          })
+        : undefined,
     },
     {
       label: 'Income',
@@ -58,6 +74,7 @@ const SummaryCards = ({
       bg: 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20',
       badge: getChangeBadge(previousPeriodChange.income),
       icon: '💰',
+      onClick: undefined,
     },
     {
       label: 'Expenses',
@@ -66,6 +83,7 @@ const SummaryCards = ({
       bg: 'from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20',
       badge: getChangeBadge(previousPeriodChange.expense, true),
       icon: '💳',
+      onClick: undefined,
     },
     {
       label: 'Savings',
@@ -74,24 +92,40 @@ const SummaryCards = ({
       bg: 'from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20',
       badge: getChangeBadge(previousPeriodChange.savings),
       icon: '🎯',
+      onClick: undefined,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-      {cards.map(({ label, value, color, bg, badge, icon }) => (
-        <div key={label} className={`card p-4 bg-gradient-to-br ${bg}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</span>
-            <span className="text-lg">{icon}</span>
+    <>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {cards.map(({ label, value, color, bg, badge, icon, onClick }) => (
+          <div
+            key={label}
+            onClick={onClick}
+            className={`card p-4 bg-gradient-to-br ${bg} ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</span>
+              <span className="text-lg">{icon}</span>
+            </div>
+            <div className={`text-xl font-bold ${color} mb-2 truncate`}>
+              {formatCurrency(value)}
+            </div>
+            {badge && <div>{badge}</div>}
           </div>
-          <div className={`text-xl font-bold ${color} mb-2 truncate`}>
-            {formatCurrency(value)}
-          </div>
-          {badge && <div>{badge}</div>}
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      {drillDown && (
+        <FilteredTransactionView
+          isOpen
+          title={drillDown.title}
+          filter={drillDown.filter}
+          onClose={() => setDrillDown(null)}
+        />
+      )}
+    </>
   );
 };
 

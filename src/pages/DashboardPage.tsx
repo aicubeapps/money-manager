@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useAccounts } from '../hooks/useAccounts';
 import SummaryCards from '../components/dashboard/SummaryCards';
 import BudgetBurnRateCard from '../components/dashboard/BudgetBurnRateCard';
 import ExpenseByCategoryChart from '../components/dashboard/ExpenseByCategoryChart';
 import MonthlyTrendChart from '../components/dashboard/MonthlyTrendChart';
 import AccountDistributionChart from '../components/dashboard/AccountDistributionChart';
+import FilteredTransactionView, { type TransactionFilterDescriptor } from '../components/common/FilteredTransactionView';
 import { formatDateRange, getDateRange } from '../utils/dateUtils';
 import type { TimeView } from '../utils/dateUtils';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -21,6 +23,8 @@ const TIME_VIEWS: { value: TimeView; label: string }[] = [
 const DashboardPage = () => {
   const [view, setView] = useState<TimeView>('month');
   const { userData } = useAuth();
+  const { accounts } = useAccounts();
+  const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
   const {
     netWorth,
     monthlyIncome,
@@ -92,6 +96,7 @@ const DashboardPage = () => {
         monthlyExpense={monthlyExpense}
         monthlySavings={monthlySavings}
         previousPeriodChange={previousPeriodChange}
+        accounts={accounts}
       />
 
       <BudgetBurnRateCard burnRate={budgetBurnRate} />
@@ -99,7 +104,16 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-5">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Expense by Category</h3>
-          <ExpenseByCategoryChart data={expenseByCategory} />
+          <ExpenseByCategoryChart
+            data={expenseByCategory}
+            onSegmentClick={(categoryId) => {
+              const category = expenseByCategory.find((c) => c.categoryId === categoryId);
+              setDrillDown({
+                title: `${category?.name || 'Category'} · ${formatDateRange(start, end)}`,
+                filter: { kind: 'category', categoryId, startDate: start, endDate: end },
+              });
+            }}
+          />
         </div>
         <div className="card p-5">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Monthly Trend</h3>
@@ -110,6 +124,15 @@ const DashboardPage = () => {
           <AccountDistributionChart data={accountDistribution} />
         </div>
       </div>
+
+      {drillDown && (
+        <FilteredTransactionView
+          isOpen
+          title={drillDown.title}
+          filter={drillDown.filter}
+          onClose={() => setDrillDown(null)}
+        />
+      )}
     </div>
   );
 };
