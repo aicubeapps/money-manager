@@ -1,14 +1,17 @@
-import { useMemo, useRef } from 'react';
-import { HiX } from 'react-icons/hi';
+import { useMemo, useRef, useState } from 'react';
+import { HiX, HiChevronLeft } from 'react-icons/hi';
 import { useTransactions } from '../../hooks/useTransactions';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import { useTags } from '../../hooks/useTags';
 import { isExcludedFromBudget } from '../../utils/budgetSpend';
+import { getAccountIcon, getAccountColor } from '../../utils/accountHelpers';
+import { calculateAccountBalance } from '../../utils/accountBalance';
+import { formatCurrency } from '../../utils/format';
 import TransactionList from '../transactions/TransactionList';
 import LoadingSpinner from './LoadingSpinner';
 import EmptyState from './EmptyState';
-import type { Tag, Transaction } from '../../types';
+import type { Account, Tag, Transaction } from '../../types';
 
 export type TransactionFilterDescriptor =
   | { kind: 'account'; accountId: string; limit?: number }
@@ -19,10 +22,23 @@ export type TransactionFilterDescriptor =
   // shown here always matches what's actually counted against the budget.
   | { kind: 'budgetCategory'; categoryId: string; month: number; year: number };
 
+// Number of transactions shown when drilling from an account row into its
+// transactions, in EITHER mode. The 'accounts'-mode flow's account rows call
+// into the exact same 'account' filter descriptor/limit used by AccountList's
+// own card-tap drill-down (10), rather than the "recent 5" mentioned in the
+// ask — see FilteredTransactionView's file-level note in the PR summary for
+// why: the task explicitly says to reuse that code path, not fork it.
+const ACCOUNT_DRILLDOWN_LIMIT = 10;
+
 interface FilteredTransactionViewProps {
   isOpen: boolean;
   title: string;
   filter: TransactionFilterDescriptor;
+  /** 'accounts' renders the list of accounts in filter.accountIds (filter
+   * must be kind: 'accountGroup') instead of a transaction list; tapping an
+   * account drills into that account's transactions within this same modal.
+   * Defaults to 'transactions'. */
+  mode?: 'transactions' | 'accounts';
   onClose: () => void;
 }
 
@@ -57,23 +73,56 @@ const matchesFilter = (t: Transaction, filter: TransactionFilterDescriptor, tags
 // library — intentionally minimal per the "don't over-engineer" ask.
 const SWIPE_CLOSE_THRESHOLD_PX = 80;
 
-const FilteredTransactionView = ({ isOpen, title, filter, onClose }: FilteredTransactionViewProps) => {
-  const { transactions, loading } = useTransactions();
-  const { accounts } = useAccounts();
+const FilteredTransactionView = ({ isOpen, title, filter, mode = 'transactions', onClose }: FilteredTransactionViewProps) => {
+  const { transactions, loading: transactionsLoading } = useTransactions();
+  const { accounts, loading: accountsLoading } = useAccounts();
   const { categories } = useCategories();
   const { tags } = useTags();
   const touchStartY = useRef<number | null>(null);
 
+  // Drilling from an account row (in 'accounts' mode) reuses this same modal
+  // instance in 'transactions' mode, scoped to that one account — exactly
+  // the { kind: 'account', accountId, limit } descriptor AccountList's own
+  // card-tap drill-down builds, run through the same matchesFilter/
+  // TransactionList render path below (not a separate implementation).
+  const [drilledAccount, setDrilledAccount] = useState<Account | null>(null);
+
+  // Reset the inner drill-down whenever the outer modal is reopened with a
+  // new filter/mode (e.g. tapping a different summary card). Adjusting state
+  // during render (React's documented pattern for this) instead of an effect,
+  // so it takes effect in the same render rather than causing an extra one.
+  const resetKey = `${isOpen}|${mode}|${JSON.stringify(filter)}`;
+  const [lastResetKey, setLastResetKey] = useState(resetKey);
+  if (lastResetKey !== resetKey) {
+    setLastResetKey(resetKey);
+    if (drilledAccount) setDrilledAccount(null);
+  }
+
+  const showingAccountsList = mode === 'accounts' && !drilledAccount;
+
+  const effectiveFilter: TransactionFilterDescriptor = useMemo(
+    () =>
+      drilledAccount
+        ? { kind: 'account', accountId: drilledAccount.id, limit: ACCOUNT_DRILLDOWN_LIMIT }
+        : filter,
+    [drilledAccount, filter]
+  );
+
   const filtered = useMemo(() => {
-    if (!isOpen) return [];
+    if (!isOpen || showingAccountsList) return [];
     const result = transactions
-      .filter((t) => matchesFilter(t, filter, tags))
+      .filter((t) => matchesFilter(t, effectiveFilter, tags))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    if (filter.kind === 'account' && filter.limit) {
-      return result.slice(0, filter.limit);
+    if (effectiveFilter.kind === 'account' && effectiveFilter.limit) {
+      return result.slice(0, effectiveFilter.limit);
     }
     return result;
-  }, [isOpen, transactions, filter, tags]);
+  }, [isOpen, showingAccountsList, transactions, effectiveFilter, tags]);
+
+  const groupAccounts = useMemo(() => {
+    if (!showingAccountsList || filter.kind !== 'accountGroup') return [];
+    return accounts.filter((a) => filter.accountIds.includes(a.id));
+  }, [showingAccountsList, filter, accounts]);
 
   if (!isOpen) return null;
 
@@ -86,6 +135,8 @@ const FilteredTransactionView = ({ isOpen, title, filter, onClose }: FilteredTra
     touchStartY.current = null;
     if (delta > SWIPE_CLOSE_THRESHOLD_PX) onClose();
   };
+
+  const headerTitle = drilledAccount ? `${drilledAccount.name} · Recent Transactions` : title;
 
   return (
     <div
@@ -103,7 +154,18 @@ const FilteredTransactionView = ({ isOpen, title, filter, onClose }: FilteredTra
         >
           <div className="sm:hidden w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600 mx-auto mt-2" />
           <div className="flex justify-between items-center p-5 pb-4">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate pr-3">{title}</h2>
+            <div className="flex items-center gap-1 min-w-0">
+              {drilledAccount && (
+                <button
+                  onClick={() => setDrilledAccount(null)}
+                  className="p-1.5 -ml-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Back to accounts"
+                >
+                  <HiChevronLeft className="w-5 h-5 text-gray-500" />
+                </button>
+              )}
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate pr-3">{headerTitle}</h2>
+            </div>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0">
               <HiX className="w-5 h-5 text-gray-500" />
             </button>
@@ -111,7 +173,40 @@ const FilteredTransactionView = ({ isOpen, title, filter, onClose }: FilteredTra
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {loading ? (
+          {showingAccountsList ? (
+            accountsLoading ? (
+              <LoadingSpinner message="Loading accounts..." />
+            ) : groupAccounts.length === 0 ? (
+              <EmptyState icon="🏦" title="No accounts" description="No accounts in this group." />
+            ) : (
+              <div className="space-y-2">
+                {groupAccounts.map((account) => {
+                  const Icon = getAccountIcon(account.type);
+                  const color = getAccountColor(account.type);
+                  const balance = calculateAccountBalance(account, transactions);
+                  return (
+                    <div
+                      key={account.id}
+                      onClick={() => setDrilledAccount(account)}
+                      role="button"
+                      tabIndex={0}
+                      className={`card p-4 border-l-4 ${color.border} flex items-center justify-between gap-3 cursor-pointer hover:shadow-md transition-all duration-150`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                          <Icon className={`w-5 h-5 ${color.text}`} />
+                        </div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">{account.name}</h3>
+                      </div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">
+                        {formatCurrency(balance)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : transactionsLoading ? (
             <LoadingSpinner message="Loading transactions..." />
           ) : filtered.length === 0 ? (
             <EmptyState icon="💸" title="No transactions" description="No transactions match this filter." />

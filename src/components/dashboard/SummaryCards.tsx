@@ -27,7 +27,7 @@ const SummaryCards = ({
   previousPeriodChange,
   accounts,
 }: SummaryCardsProps) => {
-  const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
+  const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor; mode?: 'transactions' | 'accounts' } | null>(null);
   const assetAccountIds = accounts.filter((a) => a.accountGroup === 'asset').map((a) => a.id);
   const getChangeBadge = (change: number, invertColor = false) => {
     if (change === 0) {
@@ -59,11 +59,14 @@ const SummaryCards = ({
       bg: 'from-primary-50 to-indigo-50 dark:from-primary-900/20 dark:to-indigo-900/20',
       badge: null,
       icon: '🏦',
-      // Net Worth is the sum of asset-group accounts — drill down into that group's transactions.
+      // Net Worth is the sum of asset-group accounts — show that group's
+      // accounts first (tapping one drills into its transactions), rather
+      // than jumping straight to a combined transaction list.
       onClick: assetAccountIds.length > 0
         ? () => setDrillDown({
-            title: 'Net Worth · Asset Account Transactions',
+            title: 'Net Worth · Accounts',
             filter: { kind: 'accountGroup', accountIds: assetAccountIds },
+            mode: 'accounts',
           })
         : undefined,
     },
@@ -122,6 +125,7 @@ const SummaryCards = ({
           isOpen
           title={drillDown.title}
           filter={drillDown.filter}
+          mode={drillDown.mode}
           onClose={() => setDrillDown(null)}
         />
       )}
