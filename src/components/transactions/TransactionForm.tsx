@@ -3,9 +3,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { HiX } from 'react-icons/hi';
-import type { Transaction, Account, Category, Tag } from '../../types';
+import type { Transaction, Account, Category, CategoryType, Tag } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { getTags, createTag } from '../../services/tagService';
+import { createCategory } from '../../services/categoryService';
+import { toast } from '../common/Toast';
 
 const transactionSchema = z
   .object({
@@ -83,6 +85,11 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [creatingTag, setCreatingTag] = useState(false);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryType, setNewCategoryType] = useState<CategoryType>('expense');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   const {
     register,
@@ -172,6 +179,30 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
     }
   };
 
+  const handleCreateCategoryInline = async () => {
+    if (!currentUser || !newCategoryName.trim()) return;
+    setCreatingCategory(true);
+    try {
+      const category = await createCategory(currentUser.uid, {
+        name: newCategoryName.trim(),
+        type: newCategoryType,
+        icon: '📌',
+        color: '#6366f1',
+        active: true,
+      });
+      setLocalCategories((prev) => [...prev, category]);
+      setValue('categoryId', category.id);
+      setShowNewCategory(false);
+      setNewCategoryName('');
+      toast.success('Category created');
+    } catch (err) {
+      console.error('Error creating category:', err);
+      toast.error('Failed to create category');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
   useEffect(() => {
     if (transaction) {
       reset({
@@ -219,9 +250,16 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   };
 
   const getCategories = () => {
-    if (transactionType === 'expense') return expenseCategories.filter(c => c.active);
-    if (transactionType === 'income') return incomeCategories.filter(c => c.active);
-    return [];
+    const base =
+      transactionType === 'expense'
+        ? expenseCategories.filter((c) => c.active)
+        : transactionType === 'income'
+          ? incomeCategories.filter((c) => c.active)
+          : [];
+    const extras = localCategories.filter(
+      (c) => c.type === transactionType && !base.some((b) => b.id === c.id)
+    );
+    return [...base, ...extras];
   };
 
   const activeAccounts = accounts.filter((a) => a.active);
@@ -323,12 +361,76 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
           {transactionType !== 'transfer' && (
             <div>
               <label className="form-label">Category</label>
-              <select {...register('categoryId')} className="form-input">
+              <select
+                value={showNewCategory ? '__new__' : watch('categoryId') || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '__new__') {
+                    setNewCategoryType(transactionType === 'income' ? 'income' : 'expense');
+                    setShowNewCategory(true);
+                  } else {
+                    setShowNewCategory(false);
+                    setValue('categoryId', val);
+                  }
+                }}
+                className="form-input"
+              >
                 <option value="">— Uncategorized —</option>
                 {getCategories().map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.icon || '📌'} {cat.name}</option>
                 ))}
+                <option value="__new__">+ Add new category</option>
               </select>
+
+              {showNewCategory && (
+                <div className="mt-2 p-3 border border-gray-200 dark:border-gray-700 rounded-xl space-y-2">
+                  <input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="form-input"
+                    placeholder="New category name"
+                    autoFocus
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['expense', 'income'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setNewCategoryType(t)}
+                        className={`border-2 rounded-lg py-1.5 text-xs font-medium capitalize transition-all ${
+                          newCategoryType === t
+                            ? t === 'expense'
+                              ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                              : 'border-green-400 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                            : 'border-gray-200 dark:border-gray-600 text-gray-500'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewCategory(false);
+                        setNewCategoryName('');
+                      }}
+                      className="btn-secondary flex-1 justify-center text-sm py-1.5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateCategoryInline}
+                      disabled={creatingCategory || !newCategoryName.trim()}
+                      className="btn-primary flex-1 justify-center text-sm py-1.5 disabled:opacity-50"
+                    >
+                      {creatingCategory ? 'Adding...' : 'Add category'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
