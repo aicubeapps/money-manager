@@ -1,4 +1,5 @@
 import { parse, isValid } from 'date-fns';
+import { fetchCategories, createCategory } from './categoryService';
 import type { Transaction } from '../types';
 
 export interface ImportRow {
@@ -270,5 +271,30 @@ export const detectDuplicates = (
     }
     return row;
   });
+};
+
+const UNCATEGORIZED_CATEGORY_NAME = 'Uncategorized';
+
+// Finds the user's "Uncategorized" category (case-insensitive), creating one
+// if it doesn't exist yet. Used as a fallback categoryId for import rows
+// where keyword-based auto-categorization finds no match — Firestore
+// rejects an explicit `categoryId: undefined` field on the transaction
+// document, so this must resolve to a real id. Call once per import run and
+// reuse the result, not once per row.
+export const getOrCreateUncategorizedCategory = async (userId: string): Promise<string> => {
+  const categories = await fetchCategories(userId);
+  const existing = categories.find(
+    (c) => c.name.trim().toLowerCase() === UNCATEGORIZED_CATEGORY_NAME.toLowerCase()
+  );
+  if (existing) return existing.id;
+
+  const created = await createCategory(userId, {
+    name: UNCATEGORIZED_CATEGORY_NAME,
+    type: 'expense',
+    icon: '📌',
+    color: '#6366f1',
+    active: true,
+  });
+  return created.id;
 };
 
