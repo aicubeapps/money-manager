@@ -70,6 +70,7 @@ interface TagFormState {
   defaultCategoryId: string;
   colorManuallySet: boolean;
   importKeywords: string;
+  excludeFromBudget: boolean;
 }
 
 const emptyForm: TagFormState = {
@@ -79,6 +80,7 @@ const emptyForm: TagFormState = {
   defaultCategoryId: '',
   colorManuallySet: false,
   importKeywords: '',
+  excludeFromBudget: false,
 };
 
 const TagsPage = () => {
@@ -129,6 +131,7 @@ const TagsPage = () => {
       defaultCategoryId: tag.defaultCategoryId || '',
       colorManuallySet: true,
       importKeywords: (tag.importKeywords || []).join(', '),
+      excludeFromBudget: tag.excludeFromBudget || false,
     });
     setShowForm(true);
   };
@@ -168,6 +171,7 @@ const TagsPage = () => {
         defaultAccountId: form.defaultAccountId || undefined,
         defaultCategoryId: form.defaultCategoryId || undefined,
         importKeywords: importKeywords.length > 0 ? importKeywords : undefined,
+        excludeFromBudget: form.excludeFromBudget,
       };
       if (editingTag) {
         await updateTag(editingTag.id, payload);
@@ -240,6 +244,11 @@ const TagsPage = () => {
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color || '#6366f1' }} />
                   <div className="font-medium text-gray-900 dark:text-white text-sm truncate">{tag.name}</div>
+                  {tag.excludeFromBudget && (
+                    <span className="badge text-gray-600 bg-gray-100 dark:text-gray-300 dark:bg-gray-700 flex-shrink-0">
+                      Excluded from budget
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 space-y-0.5">
                   {accountName(tag.defaultAccountId) && <div>Account: {accountName(tag.defaultAccountId)}</div>}
@@ -343,6 +352,21 @@ const TagsPage = () => {
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Used only during CSV import to auto-suggest this tag — not the old text-matching rules engine.
+                </p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.excludeFromBudget}
+                    onChange={(e) => setForm((prev) => ({ ...prev, excludeFromBudget: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-500 focus:ring-primary-400"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Exclude tagged transactions from budget</span>
+                </label>
+                <p className="text-xs text-gray-400 mt-1 ml-6">
+                  Transactions with this tag won't count toward category budget spend (dashboard totals are unaffected).
                 </p>
               </div>
 

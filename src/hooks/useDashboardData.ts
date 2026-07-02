@@ -2,8 +2,11 @@ import { useMemo } from 'react';
 import { useAccounts } from './useAccounts';
 import { useTransactions } from './useTransactions';
 import { useCategories } from './useCategories';
+import { useBudgets } from './useBudgets';
+import { useTags } from './useTags';
 import { getDateRange, getPreviousPeriod } from '../utils/dateUtils';
 import { calculateAccountBalance } from '../utils/accountBalance';
+import { isExcludedFromBudget } from '../utils/budgetSpend';
 import type { TimeView } from '../utils/dateUtils';
 import {
   startOfDay, endOfDay,
@@ -13,6 +16,19 @@ import {
   subDays, subWeeks, subMonths,
   format,
 } from 'date-fns';
+
+export interface BudgetBurnRate {
+  hasBudget: boolean;
+  overallBudget: number;
+  spentSoFar: number;
+  remainingBudget: number;
+  avgDailySpend: number;
+  /** Estimated days the remaining budget will last at the current daily burn rate.
+   * Null when there's no spend yet to compute a rate from. */
+  estimatedDaysLeft: number | null;
+  /** Calendar days remaining in the current month (after today). */
+  calendarDaysLeft: number;
+}
 
 interface DashboardData {
   netWorth: number;
@@ -27,16 +43,30 @@ interface DashboardData {
     expense: number;
     savings: number;
   };
+  budgetBurnRate: BudgetBurnRate;
   loading: boolean;
   error: string | null;
 }
+
+const EMPTY_BURN_RATE: BudgetBurnRate = {
+  hasBudget: false,
+  overallBudget: 0,
+  spentSoFar: 0,
+  remainingBudget: 0,
+  avgDailySpend: 0,
+  estimatedDaysLeft: null,
+  calendarDaysLeft: 0,
+};
 
 export const useDashboardData = (view: TimeView = 'month') => {
   const { accounts, loading: accountsLoading, error: accountsError } = useAccounts();
   const { transactions, loading: transactionsLoading, error: transactionsError } = useTransactions();
   const { categories, loading: categoriesLoading } = useCategories();
+  const now0 = new Date();
+  const { budgets: currentMonthBudgets, loading: budgetsLoading } = useBudgets(now0.getMonth() + 1, now0.getFullYear());
+  const { tags, loading: tagsLoading } = useTags();
 
-  const loading = accountsLoading || transactionsLoading || categoriesLoading;
+  const loading = accountsLoading || transactionsLoading || categoriesLoading || budgetsLoading || tagsLoading;
   const error = accountsError || transactionsError;
 
   const data = useMemo((): DashboardData => {
@@ -50,6 +80,7 @@ export const useDashboardData = (view: TimeView = 'month') => {
         monthlyTrend: [],
         accountDistribution: [],
         previousPeriodChange: { income: 0, expense: 0, savings: 0 },
+        budgetBurnRate: EMPTY_BURN_RATE,
         loading,
         error,
       };
@@ -179,6 +210,41 @@ export const useDashboardData = (view: TimeView = 'month') => {
     const prevSavings = prevIncome - prevExpense;
     const currentSavings = income - expense;
 
+    // Budget burn rate — always based on the actual current month, independent
+    // of the selected dashboard `view`.
+    const budgetBurnRate: BudgetBurnRate = (() => {
+      const currentBudget = currentMonthBudgets[0];
+      if (!currentBudget) return EMPTY_BURN_RATE;
+
+      const monthStart = startOfMonth(now);
+      const daysInMonth = endOfMonth(now).getDate();
+      const currentDay = now.getDate();
+      const calendarDaysLeft = Math.max(daysInMonth - currentDay, 0);
+
+      const spentSoFar = transactions
+        .filter((t) => t.type === 'expense')
+        .filter((t) => {
+          const d = new Date(t.date);
+          return d >= monthStart && d <= now;
+        })
+        .filter((t) => !isExcludedFromBudget(t, tags))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const avgDailySpend = spentSoFar / currentDay;
+      const remainingBudget = currentBudget.amount - spentSoFar;
+      const estimatedDaysLeft = avgDailySpend > 0 ? remainingBudget / avgDailySpend : null;
+
+      return {
+        hasBudget: true,
+        overallBudget: currentBudget.amount,
+        spentSoFar,
+        remainingBudget,
+        avgDailySpend,
+        estimatedDaysLeft,
+        calendarDaysLeft,
+      };
+    })();
+
     return {
       netWorth,
       monthlyIncome: income,
@@ -186,6 +252,7 @@ export const useDashboardData = (view: TimeView = 'month') => {
       monthlySavings: currentSavings,
       expenseByCategory,
       monthlyTrend,
+      budgetBurnRate,
       accountDistribution,
       previousPeriodChange: {
         income: income - prevIncome,
@@ -195,7 +262,7 @@ export const useDashboardData = (view: TimeView = 'month') => {
       loading: false,
       error: null,
     };
-  }, [accounts, transactions, categories, view, loading, error]);
+  }, [accounts, transactions, categories, currentMonthBudgets, tags, view, loading, error]);
 
   return data;
 };

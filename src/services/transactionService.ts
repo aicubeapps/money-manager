@@ -13,21 +13,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Transaction, TransactionType } from '../types';
-import { updateBudgetSpent } from './budgetService';
 
 const COLLECTION = 'transactions';
-
-// Normalize a value that could be a JS Date, a Firestore Timestamp, or a string into a JS Date
-const toJsDate = (date: any): Date => (date?.toDate ? date.toDate() : new Date(date));
-
-// Helper to get month/year from a Date (or Timestamp/string, normalized internally)
-const getMonthYear = (date: any) => {
-  const jsDate = toJsDate(date);
-  return {
-    month: jsDate.getMonth() + 1,
-    year: jsDate.getFullYear(),
-  };
-};
 
 // Create a new transaction
 export const createTransaction = async (
@@ -43,12 +30,6 @@ export const createTransaction = async (
   };
 
   const docRef = await addDoc(collection(db, COLLECTION), transactionData);
-
-  // If it's an expense with a category, update budget spent
-  if (data.type === 'expense' && data.categoryId) {
-    const { month, year } = getMonthYear(data.date);
-    await updateBudgetSpent(userId, data.categoryId, month, year);
-  }
 
   return { id: docRef.id, ...transactionData } as Transaction;
 };
@@ -86,21 +67,6 @@ export const bulkCreateTransactions = async (
     }
   }
 
-  // Refresh budgets once per affected category/month/year, rather than per row
-  const budgetKeys = new Set<string>();
-  for (const tx of created) {
-    if (tx.type === 'expense' && tx.categoryId) {
-      const { month, year } = getMonthYear(tx.date);
-      budgetKeys.add(`${tx.categoryId}|${month}|${year}`);
-    }
-  }
-  await Promise.all(
-    Array.from(budgetKeys).map((key) => {
-      const [categoryId, month, year] = key.split('|');
-      return updateBudgetSpent(userId, categoryId, Number(month), Number(year));
-    })
-  );
-
   return created;
 };
 
@@ -114,20 +80,6 @@ export const updateTransaction = async (
     ...data,
     updatedAt: new Date(),
   });
-
-  // If we updated the transaction, we need to refresh budgets for affected categories
-  // We'll do a simplified approach: fetch the updated transaction and trigger budget updates
-  const updatedDoc = await getDoc(docRef);
-  if (updatedDoc.exists()) {
-    const tx = updatedDoc.data() as Transaction;
-    tx.date = toJsDate(tx.date);
-    if (tx.type === 'expense' && tx.categoryId) {
-      const { month, year } = getMonthYear(tx.date);
-      await updateBudgetSpent(tx.userId, tx.categoryId, month, year);
-    }
-    // If the original had a category that changed, we'd also need to update old category
-    // This is simplified; for production you'd track previous state
-  }
 };
 
 // Delete a transaction
@@ -136,14 +88,7 @@ export const deleteTransaction = async (transactionId: string) => {
   const docRef = doc(db, COLLECTION, transactionId);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    const tx = docSnap.data() as Transaction;
-    tx.date = toJsDate(tx.date);
     await deleteDoc(docRef);
-    // If it was an expense with a category, update budget spent
-    if (tx.type === 'expense' && tx.categoryId) {
-      const { month, year } = getMonthYear(tx.date);
-      await updateBudgetSpent(tx.userId, tx.categoryId, month, year);
-    }
   } else {
     throw new Error('Transaction not found');
   }

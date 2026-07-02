@@ -54,6 +54,7 @@ export interface Tag {
   defaultAccountId?: string;
   defaultCategoryId?: string;
   importKeywords?: string[];
+  excludeFromBudget: boolean;
   createdAt: Date;
 }
 
@@ -86,14 +87,18 @@ export interface Attachment {
   userId: string;
 }
 
+export interface BudgetAllocation {
+  categoryId: string;
+  amount: number;
+}
+
 export interface Budget {
   id: string;
   userId: string;
-  categoryId: string;
   month: number;
   year: number;
   amount: number;
-  spent: number;
+  allocations: BudgetAllocation[];
   createdAt: Date;
   updatedAt: Date;
 }
