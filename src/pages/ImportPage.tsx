@@ -19,11 +19,12 @@ import { toast } from '../components/common/Toast';
 type Step = 1 | 2 | 3;
 
 const emptyMapping: ColumnMapping = {
-  dateColumn: '',
-  descriptionColumn: '',
-  amountColumn: '',
-  debitColumn: '',
-  creditColumn: '',
+  dateColumn: -1,
+  descriptionColumn: -1,
+  amountColumn: -1,
+  debitColumn: -1,
+  creditColumn: -1,
+  directionColumn: -1,
 };
 
 const ImportPage = () => {
@@ -57,10 +58,26 @@ const ImportPage = () => {
 
   // Blank/whitespace-only headers can still slip through (e.g. a genuinely
   // blank column in an otherwise valid header row), so filter them out of
-  // the mapping dropdowns regardless of how the header row was located.
+  // the mapping dropdowns regardless of how the header row was located. The
+  // column's index (not the header string) is the option value, since some
+  // bank formats reuse the same header name for multiple columns (e.g.
+  // Kotak's two "Dr / Cr" columns) — using the string would make them
+  // indistinguishable. Any header name that appears more than once gets an
+  // explicit column number appended to its label so the user can tell them
+  // apart.
   const mappableHeaders = headers
     .map((header, index) => ({ header, index }))
     .filter(({ header }) => header.trim() !== '');
+
+  const headerNameCounts = mappableHeaders.reduce<Record<string, number>>((counts, { header }) => {
+    counts[header] = (counts[header] || 0) + 1;
+    return counts;
+  }, {});
+
+  const mappableHeaderOptions = mappableHeaders.map(({ header, index }) => ({
+    index,
+    label: headerNameCounts[header] > 1 ? `${header} (col ${index + 1})` : header,
+  }));
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,13 +90,18 @@ const ImportPage = () => {
 
     // Best-effort auto-guess of column mapping by header name, user can still change it
     const guess = (candidates: string[]) =>
-      parsed.headers.find((h) => candidates.includes(h.toLowerCase().trim())) || '';
+      parsed.headers.findIndex((h) => candidates.includes(h.toLowerCase().trim()));
     setMapping({
       dateColumn: guess(['date', 'transaction date']),
       descriptionColumn: guess(['description', 'narration', 'details']),
       amountColumn: guess(['amount']),
       debitColumn: guess(['debit', 'withdrawal']),
       creditColumn: guess(['credit', 'deposit']),
+      // Not auto-guessed: banks sometimes reuse the same header name for
+      // more than one column (e.g. Kotak's two "Dr / Cr" columns), so
+      // guessing here risks silently picking the wrong one. Left for the
+      // user to pick explicitly from the (now disambiguated) dropdown.
+      directionColumn: -1,
     });
   };
 
@@ -253,12 +275,12 @@ const ImportPage = () => {
                 <label className="form-label">Date column</label>
                 <select
                   value={mapping.dateColumn}
-                  onChange={(e) => setMapping((prev) => ({ ...prev, dateColumn: e.target.value }))}
+                  onChange={(e) => setMapping((prev) => ({ ...prev, dateColumn: Number(e.target.value) }))}
                   className="form-input"
                 >
-                  <option value="">— Select —</option>
-                  {mappableHeaders.map(({ header, index }) => (
-                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  <option value={-1}>— Select —</option>
+                  {mappableHeaderOptions.map(({ index, label }) => (
+                    <option key={index} value={index}>{label}</option>
                   ))}
                 </select>
               </div>
@@ -266,12 +288,12 @@ const ImportPage = () => {
                 <label className="form-label">Description column</label>
                 <select
                   value={mapping.descriptionColumn}
-                  onChange={(e) => setMapping((prev) => ({ ...prev, descriptionColumn: e.target.value }))}
+                  onChange={(e) => setMapping((prev) => ({ ...prev, descriptionColumn: Number(e.target.value) }))}
                   className="form-input"
                 >
-                  <option value="">— Select —</option>
-                  {mappableHeaders.map(({ header, index }) => (
-                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  <option value={-1}>— Select —</option>
+                  {mappableHeaderOptions.map(({ index, label }) => (
+                    <option key={index} value={index}>{label}</option>
                   ))}
                 </select>
               </div>
@@ -279,12 +301,12 @@ const ImportPage = () => {
                 <label className="form-label">Amount column <span className="text-gray-400 font-normal">(optional if debit/credit used)</span></label>
                 <select
                   value={mapping.amountColumn}
-                  onChange={(e) => setMapping((prev) => ({ ...prev, amountColumn: e.target.value }))}
+                  onChange={(e) => setMapping((prev) => ({ ...prev, amountColumn: Number(e.target.value) }))}
                   className="form-input"
                 >
-                  <option value="">— Select —</option>
-                  {mappableHeaders.map(({ header, index }) => (
-                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  <option value={-1}>— Select —</option>
+                  {mappableHeaderOptions.map(({ index, label }) => (
+                    <option key={index} value={index}>{label}</option>
                   ))}
                 </select>
               </div>
@@ -293,12 +315,12 @@ const ImportPage = () => {
                 <label className="form-label">Debit column <span className="text-gray-400 font-normal">(optional)</span></label>
                 <select
                   value={mapping.debitColumn}
-                  onChange={(e) => setMapping((prev) => ({ ...prev, debitColumn: e.target.value }))}
+                  onChange={(e) => setMapping((prev) => ({ ...prev, debitColumn: Number(e.target.value) }))}
                   className="form-input"
                 >
-                  <option value="">— None —</option>
-                  {mappableHeaders.map(({ header, index }) => (
-                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  <option value={-1}>— None —</option>
+                  {mappableHeaderOptions.map(({ index, label }) => (
+                    <option key={index} value={index}>{label}</option>
                   ))}
                 </select>
               </div>
@@ -306,12 +328,27 @@ const ImportPage = () => {
                 <label className="form-label">Credit column <span className="text-gray-400 font-normal">(optional)</span></label>
                 <select
                   value={mapping.creditColumn}
-                  onChange={(e) => setMapping((prev) => ({ ...prev, creditColumn: e.target.value }))}
+                  onChange={(e) => setMapping((prev) => ({ ...prev, creditColumn: Number(e.target.value) }))}
                   className="form-input"
                 >
-                  <option value="">— None —</option>
-                  {mappableHeaders.map(({ header, index }) => (
-                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  <option value={-1}>— None —</option>
+                  {mappableHeaderOptions.map(({ index, label }) => (
+                    <option key={index} value={index}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">
+                  Debit/Credit indicator column <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <select
+                  value={mapping.directionColumn}
+                  onChange={(e) => setMapping((prev) => ({ ...prev, directionColumn: Number(e.target.value) }))}
+                  className="form-input"
+                >
+                  <option value={-1}>— None —</option>
+                  {mappableHeaderOptions.map(({ index, label }) => (
+                    <option key={index} value={index}>{label}</option>
                   ))}
                 </select>
               </div>
@@ -321,7 +358,11 @@ const ImportPage = () => {
           {headers.length > 0 && (
             <button
               type="button"
-              disabled={!mapping.dateColumn || !mapping.descriptionColumn || (!mapping.amountColumn && !mapping.debitColumn && !mapping.creditColumn)}
+              disabled={
+                mapping.dateColumn === -1 ||
+                mapping.descriptionColumn === -1 ||
+                (mapping.amountColumn === -1 && (mapping.debitColumn ?? -1) === -1 && (mapping.creditColumn ?? -1) === -1)
+              }
               onClick={handleBuildPreview}
               className="btn-primary text-sm disabled:opacity-50"
             >
