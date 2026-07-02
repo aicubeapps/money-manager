@@ -53,7 +53,9 @@ const TransactionsPage = () => {
             accountId: transactionData.accountId,
             categoryId: transactionData.categoryId || '',
             description: transactionData.notes || '',
-            tags: transactionData.tags,
+            ...(transactionData.tags && transactionData.tags.length > 0
+              ? { tags: transactionData.tags }
+              : {}),
           },
           frequency: recurringRule.frequency,
           dayOfMonth: recurringRule.dayOfMonth,
