@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { HiPencil, HiTrash, HiPlus, HiSearch } from 'react-icons/hi';
 import { formatCurrency } from '../../utils/format';
-import type { Transaction, Account, Category } from '../../types';
+import type { Transaction, Account, Category, Tag } from '../../types';
+import { useAuth } from '../../hooks/useAuth';
+import { getTags } from '../../services/tagService';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
 import { format } from 'date-fns';
@@ -25,11 +27,18 @@ const TYPE_STYLES: Record<string, { text: string; bg: string; label: string; pre
 };
 
 const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete, onAdd }: TransactionListProps) => {
+  const { currentUser } = useAuth();
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    getTags(currentUser.uid).then(setAllTags).catch(() => {});
+  }, [currentUser]);
 
   const getAccountName = (id: string) => accounts.find((a) => a.id === id)?.name || 'Unknown';
   const getCategoryName = (id?: string) => {
@@ -37,6 +46,7 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
     const cat = categories.find((c) => c.id === id);
     return cat ? { name: cat.name, icon: cat.icon || '📌', color: cat.color } : null;
   };
+  const getTagName = (id: string) => allTags.find((t) => t.id === id)?.name;
 
   const filtered = useMemo(() => {
     const from = dateFrom ? new Date(dateFrom) : null;
@@ -216,11 +226,15 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
                         </div>
                         {transaction.tags && transaction.tags.length > 0 && (
                           <div className="flex gap-1 mt-1.5 flex-wrap">
-                            {transaction.tags.map((tag, i) => (
-                              <span key={i} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">
-                                #{tag}
-                              </span>
-                            ))}
+                            {transaction.tags.map((tagId) => {
+                              const name = getTagName(tagId);
+                              if (!name) return null;
+                              return (
+                                <span key={tagId} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">
+                                  #{name}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
