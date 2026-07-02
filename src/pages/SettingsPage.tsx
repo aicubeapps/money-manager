@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
-import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiChevronRight } from 'react-icons/hi';
+import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiChevronRight } from 'react-icons/hi';
+import RecurringRulesList from '../components/settings/RecurringRulesList';
 
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
@@ -88,6 +89,14 @@ const SettingsPage = () => {
           </div>
           <HiChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
+      </div>
+
+      {/* Recurring Transactions */}
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-2">
+          <HiOutlineRefresh className="w-4 h-4" /> Recurring Transactions
+        </h2>
+        <RecurringRulesList />
       </div>
 
       {/* Security */}

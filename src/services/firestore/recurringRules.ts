@@ -88,3 +88,15 @@ export const getActiveRecurringRules = async (userId: string) => {
     ...docSnap.data(),
   })) as RecurringRule[];
 };
+
+// Fetch all recurring rules (active and inactive) for a user
+export const getAllRecurringRules = async (userId: string) => {
+  const q = query(collection(db, COLLECTION), where('userId', '==', userId));
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  })) as RecurringRule[];
+};

@@ -1,14 +1,71 @@
+import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
+import { useRecurringReminders } from '../../hooks/useRecurringReminders';
+import { createTransaction } from '../../services/transactionService';
+import { updateRecurringRule } from '../../services/firestore/recurringRules';
+import { calculateNextDueDate } from '../../utils/recurringDates';
+import { toast } from '../common/Toast';
+import { formatCurrency } from '../../utils/format';
+import type { RecurringRule } from '../../types';
 import { HiOutlineMenu, HiOutlineMoon, HiOutlineSun, HiOutlineLogout } from 'react-icons/hi';
+import { FiBell } from 'react-icons/fi';
 
 interface HeaderProps {
   toggleSidebar: () => void;
 }
 
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
 const Header = ({ toggleSidebar }: HeaderProps) => {
-  const { userData, logout } = useAuth();
+  const { currentUser, userData, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { dueRules, refetch } = useRecurringReminders();
+  const [showReminders, setShowReminders] = useState(false);
+  const [actioningId, setActioningId] = useState<string | null>(null);
+
+  const handleConfirm = async (rule: RecurringRule) => {
+    if (!currentUser) return;
+    setActioningId(rule.id);
+    try {
+      await createTransaction(currentUser.uid, {
+        type: rule.templateTransaction.type,
+        date: new Date(),
+        amount: rule.templateTransaction.amount,
+        accountId: rule.templateTransaction.accountId,
+        categoryId: rule.templateTransaction.categoryId,
+        notes: rule.templateTransaction.description,
+        tags: rule.templateTransaction.tags,
+      });
+      await updateRecurringRule(rule.id, {
+        nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth),
+        lastCreatedDate: new Date().toISOString().split('T')[0],
+      });
+      toast.success('Transaction added from recurring rule');
+      refetch();
+    } catch (err) {
+      console.error('Error confirming recurring transaction:', err);
+      toast.error('Failed to add transaction');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleSkip = async (rule: RecurringRule) => {
+    setActioningId(rule.id);
+    try {
+      await updateRecurringRule(rule.id, {
+        nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth),
+      });
+      toast.info('Recurring transaction skipped');
+      refetch();
+    } catch (err) {
+      console.error('Error skipping recurring transaction:', err);
+      toast.error('Failed to skip recurring transaction');
+    } finally {
+      setActioningId(null);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/80 px-4 py-2.5 flex items-center justify-between">
@@ -31,6 +88,73 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
       </div>
 
       <div className="flex items-center gap-1">
+        <div className="relative">
+          <button
+            onClick={() => setShowReminders((prev) => !prev)}
+            className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Recurring transaction reminders"
+          >
+            <FiBell className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            {dueRules.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
+                {dueRules.length}
+              </span>
+            )}
+          </button>
+
+          {showReminders && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowReminders(false)}
+              />
+              <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 animate-fade-in">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                  <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
+                    Recurring transactions due
+                  </h3>
+                </div>
+
+                {dueRules.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400 text-center">
+                    No recurring transactions due
+                  </p>
+                ) : (
+                  dueRules.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                    >
+                      <div className="font-medium text-sm text-gray-900 dark:text-white">
+                        {rule.templateTransaction.description || 'Recurring transaction'}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {formatCurrency(rule.templateTransaction.amount)} · {capitalize(rule.frequency)}
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleSkip(rule)}
+                          disabled={actioningId === rule.id}
+                          className="btn-secondary flex-1 justify-center text-xs py-1.5 disabled:opacity-50"
+                        >
+                          Skip
+                        </button>
+                        <button
+                          onClick={() => handleConfirm(rule)}
+                          disabled={actioningId === rule.id}
+                          className="btn-primary flex-1 justify-center text-xs py-1.5 disabled:opacity-50"
+                        >
+                          Confirm
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
