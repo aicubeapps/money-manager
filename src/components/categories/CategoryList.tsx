@@ -3,6 +3,7 @@ import { HiPencil, HiEyeOff, HiEye, HiTrash, HiPlus } from 'react-icons/hi';
 import type { Category } from '../../types';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
+import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
 
 interface CategoryListProps {
   categories: Category[];
@@ -18,6 +19,7 @@ type FilterType = 'all' | 'expense' | 'income';
 const CategoryList = ({ categories, onEdit, onDisable, onEnable, onDelete, onAdd }: CategoryListProps) => {
   const [filter, setFilter] = useState<FilterType>('expense');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
 
   const filtered = categories.filter((cat) => filter === 'all' || cat.type === filter);
   const expenseCount = categories.filter(c => c.type === 'expense').length;
@@ -70,7 +72,13 @@ const CategoryList = ({ categories, onEdit, onDisable, onEnable, onDelete, onAdd
           {filtered.map((category) => (
             <div
               key={category.id}
-              className={`card p-3.5 flex items-center justify-between group hover:shadow-md transition-all duration-150 ${!category.active ? 'opacity-50' : ''}`}
+              onClick={() => setDrillDown({
+                title: `${category.name} · All Transactions`,
+                filter: { kind: 'category', categoryId: category.id },
+              })}
+              role="button"
+              tabIndex={0}
+              className={`card p-3.5 flex items-center justify-between group hover:shadow-md transition-all duration-150 cursor-pointer ${!category.active ? 'opacity-50' : ''}`}
               style={{ borderLeft: `3px solid ${category.color || '#6366f1'}` }}
             >
               <div className="flex items-center gap-2.5 min-w-0">
@@ -82,7 +90,10 @@ const CategoryList = ({ categories, onEdit, onDisable, onEnable, onDelete, onAdd
                   </div>
                 </div>
               </div>
-              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+              <div
+                className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button onClick={() => onEdit(category)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Edit">
                   <HiPencil className="w-3.5 h-3.5 text-gray-400" />
                 </button>
@@ -113,6 +124,15 @@ const CategoryList = ({ categories, onEdit, onDisable, onEnable, onDelete, onAdd
         onCancel={() => setDeleteTarget(null)}
         danger
       />
+
+      {drillDown && (
+        <FilteredTransactionView
+          isOpen
+          title={drillDown.title}
+          filter={drillDown.filter}
+          onClose={() => setDrillDown(null)}
+        />
+      )}
     </div>
   );
 };

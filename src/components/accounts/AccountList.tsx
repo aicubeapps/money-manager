@@ -14,6 +14,7 @@ import { getAccountIcon, getAccountColor } from '../../utils/accountHelpers';
 import { calculateAccountBalance } from '../../utils/accountBalance';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
+import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
 
 interface AccountListProps {
   accounts: Account[];
@@ -47,6 +48,7 @@ const AccountList = ({
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
+  const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
 
   const deleteTargetTxCount = useMemo(() => {
     if (!deleteTarget) return 0;
@@ -313,7 +315,13 @@ const AccountList = ({
             return (
               <div
                 key={account.id}
-                className={`card p-4 border-l-4 ${color.border} transition-all duration-150 hover:shadow-md group flex flex-col min-h-[130px] ${
+                onClick={() => setDrillDown({
+                  title: `${account.name} · Recent Transactions`,
+                  filter: { kind: 'account', accountId: account.id, limit: 10 },
+                })}
+                role="button"
+                tabIndex={0}
+                className={`card p-4 border-l-4 ${color.border} transition-all duration-150 hover:shadow-md group flex flex-col min-h-[130px] cursor-pointer ${
                   !account.active ? 'opacity-60' : ''
                 }`}
               >
@@ -332,7 +340,10 @@ const AccountList = ({
                     </div>
                   </div>
 
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div
+                    className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {account.active ? (
                       <>
                         <button
@@ -458,6 +469,15 @@ const AccountList = ({
         onCancel={() => setDeleteTarget(null)}
         danger
       />
+
+      {drillDown && (
+        <FilteredTransactionView
+          isOpen
+          title={drillDown.title}
+          filter={drillDown.filter}
+          onClose={() => setDrillDown(null)}
+        />
+      )}
     </div>
   );
 };

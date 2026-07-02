@@ -6,6 +6,7 @@ import { getCategorySpend } from '../../utils/budgetSpend';
 import type { Budget, Category, Tag, Transaction } from '../../types';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
+import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
 
 interface BudgetListProps {
   budgets: Budget[];
@@ -21,6 +22,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete, onAdd }: BudgetListProps) => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
 
   const getCategoryInfo = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId);
@@ -97,7 +99,16 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
                     const isWarning = percentage >= 80 && !isOver;
 
                     return (
-                      <div key={allocation.categoryId} className="flex items-center justify-between text-xs">
+                      <div
+                        key={allocation.categoryId}
+                        onClick={() => setDrillDown({
+                          title: `${name} · ${MONTH_NAMES[budget.month - 1]} ${budget.year} Budget`,
+                          filter: { kind: 'budgetCategory', categoryId: allocation.categoryId, month: budget.month, year: budget.year },
+                        })}
+                        role="button"
+                        tabIndex={0}
+                        className="flex items-center justify-between text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg -mx-1.5 px-1.5 py-0.5 transition-colors"
+                      >
                         <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
                           <span>{icon}</span> {name}
                           {isOver && (
@@ -143,6 +154,15 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
         onCancel={() => setDeleteTarget(null)}
         danger
       />
+
+      {drillDown && (
+        <FilteredTransactionView
+          isOpen
+          title={drillDown.title}
+          filter={drillDown.filter}
+          onClose={() => setDrillDown(null)}
+        />
+      )}
     </div>
   );
 };

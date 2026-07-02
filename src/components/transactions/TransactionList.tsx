@@ -12,9 +12,13 @@ interface TransactionListProps {
   transactions: Transaction[];
   accounts: Account[];
   categories: Category[];
-  onEdit: (transaction: Transaction) => void;
-  onDelete: (id: string) => void;
-  onAdd: () => void;
+  onEdit?: (transaction: Transaction) => void;
+  onDelete?: (id: string) => void;
+  onAdd?: () => void;
+  /** Read-only, chromeless mode: hides the header/summary/filters/add button
+   * and per-row edit/delete actions. Used by FilteredTransactionView so it
+   * can reuse this component's row rendering without its page-level chrome. */
+  compact?: boolean;
 }
 
 const TYPE_FILTERS = ['all', 'expense', 'income', 'transfer'] as const;
@@ -26,7 +30,7 @@ const TYPE_STYLES: Record<string, { text: string; bg: string; label: string; pre
   transfer: { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Transfer', prefix: '↔' },
 };
 
-const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete, onAdd }: TransactionListProps) => {
+const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete, onAdd, compact = false }: TransactionListProps) => {
   const { currentUser } = useAuth();
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,6 +88,8 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {!compact && (
+        <>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -168,14 +174,16 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
           )}
         </div>
       </div>
+        </>
+      )}
 
       {/* List */}
       {grouped.length === 0 ? (
         <EmptyState
           icon="💸"
           title="No transactions yet"
-          description={searchTerm ? 'No transactions match your search.' : 'Start recording your income and expenses.'}
-          action={!searchTerm ? (
+          description={searchTerm ? 'No transactions match your search.' : compact ? 'No transactions match this filter.' : 'Start recording your income and expenses.'}
+          action={!searchTerm && !compact ? (
             <button onClick={onAdd} className="btn-primary text-sm">
               <HiPlus className="w-4 h-4" /> Add your first transaction
             </button>
@@ -244,22 +252,24 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
                         <div className={`text-base font-bold ${style.text}`}>
                           {style.prefix !== '↔' ? style.prefix : ''}{formatCurrency(transaction.amount)}
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => onEdit(transaction)}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <HiPencil className="w-4 h-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(transaction.id)}
-                            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <HiTrash className="w-4 h-4 text-gray-400 hover:text-red-500" />
-                          </button>
-                        </div>
+                        {!compact && (
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => onEdit?.(transaction)}
+                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <HiPencil className="w-4 h-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(transaction.id)}
+                              className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <HiTrash className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -275,7 +285,7 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
         title="Delete transaction"
         message="This action cannot be undone. The transaction will be permanently removed."
         confirmLabel="Delete"
-        onConfirm={() => { if (deleteTarget) onDelete(deleteTarget); }}
+        onConfirm={() => { if (deleteTarget) onDelete?.(deleteTarget); }}
         onCancel={() => setDeleteTarget(null)}
         danger
       />
