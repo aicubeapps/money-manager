@@ -62,8 +62,40 @@ export const parseCSV = (fileContent: string): { headers: string[]; rows: string
 
   if (lines.length === 0) return { headers: [], rows: [] };
 
-  const headers = parseLine(lines[0]);
-  const rows = lines.slice(1).map(parseLine);
+  const parsedLines = lines.map(parseLine);
+
+  // Bank CSV exports often prepend several metadata/letterhead rows (account
+  // holder address, IFSC, MICR, etc.) before the real column-header row, so
+  // we can't just trust line 0. Scan for the first line that looks like a
+  // genuine header: every field is filled in (unlike the label/value
+  // preamble rows above it, which have several blank cells), it has more
+  // than one column, its field count roughly matches the very next line,
+  // and that next line has at least one field that looks like a date or a
+  // number — a light signal that it's actual transaction data, not more
+  // preamble. Falls back to line 0 if nothing matches within the first 30
+  // lines, so existing working imports don't regress.
+  const looksLikeDateOrNumber = (value: string) =>
+    /\d{1,4}[-/]\d{1,2}[-/]\d{1,4}/.test(value) || /^-?[\d,]+(\.\d+)?$/.test(value.trim());
+
+  const MAX_PREAMBLE_SCAN = 30;
+  let headerIndex = 0;
+
+  for (let i = 0; i < Math.min(parsedLines.length - 1, MAX_PREAMBLE_SCAN); i++) {
+    const candidate = parsedLines[i];
+    const next = parsedLines[i + 1];
+
+    const isFullyPopulated = candidate.length > 1 && candidate.every((f) => f.trim() !== '');
+    const fieldCountClose = Math.abs(candidate.length - next.length) <= 1;
+    const nextLooksLikeData = next.some(looksLikeDateOrNumber);
+
+    if (isFullyPopulated && fieldCountClose && nextLooksLikeData) {
+      headerIndex = i;
+      break;
+    }
+  }
+
+  const headers = parsedLines[headerIndex];
+  const rows = parsedLines.slice(headerIndex + 1);
 
   return { headers, rows };
 };

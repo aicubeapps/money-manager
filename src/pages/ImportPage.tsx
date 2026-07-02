@@ -55,6 +55,13 @@ const ImportPage = () => {
   const incomeCategories = categories.filter((c) => c.active && c.type === 'income');
   const allCategories = [...expenseCategories, ...incomeCategories];
 
+  // Blank/whitespace-only headers can still slip through (e.g. a genuinely
+  // blank column in an otherwise valid header row), so filter them out of
+  // the mapping dropdowns regardless of how the header row was located.
+  const mappableHeaders = headers
+    .map((header, index) => ({ header, index }))
+    .filter(({ header }) => header.trim() !== '');
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -250,7 +257,9 @@ const ImportPage = () => {
                   className="form-input"
                 >
                   <option value="">— Select —</option>
-                  {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+                  {mappableHeaders.map(({ header, index }) => (
+                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -261,7 +270,9 @@ const ImportPage = () => {
                   className="form-input"
                 >
                   <option value="">— Select —</option>
-                  {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+                  {mappableHeaders.map(({ header, index }) => (
+                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -272,7 +283,9 @@ const ImportPage = () => {
                   className="form-input"
                 >
                   <option value="">— Select —</option>
-                  {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+                  {mappableHeaders.map(({ header, index }) => (
+                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  ))}
                 </select>
               </div>
               <div />
@@ -284,7 +297,9 @@ const ImportPage = () => {
                   className="form-input"
                 >
                   <option value="">— None —</option>
-                  {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+                  {mappableHeaders.map(({ header, index }) => (
+                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -295,7 +310,9 @@ const ImportPage = () => {
                   className="form-input"
                 >
                   <option value="">— None —</option>
-                  {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+                  {mappableHeaders.map(({ header, index }) => (
+                    <option key={`${header}-${index}`} value={header}>{header}</option>
+                  ))}
                 </select>
               </div>
             </div>
