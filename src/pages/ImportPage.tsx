@@ -11,6 +11,7 @@ import {
   parseCSV,
   mapRowsToImportRows,
   detectDuplicates,
+  getOrCreateUncategorizedCategory,
 } from '../services/importService';
 import type { ImportRow, ColumnMapping } from '../services/importService';
 import type { Tag } from '../types';
@@ -185,12 +186,17 @@ const ImportPage = () => {
       const duplicateCount = importRows.filter((row) => row.isDuplicate).length;
       const excludedCount = importRows.filter((row) => row.excluded && !row.isDuplicate).length;
 
+      // Resolved once per import run, not once per row, and used as a
+      // fallback wherever auto-categorization finds no match — Firestore
+      // rejects an explicit categoryId: undefined on the transaction doc.
+      const uncategorizedCategoryId = await getOrCreateUncategorizedCategory(currentUser.uid);
+
       const payloads = rowsToImport.map((row) => {
         const description = row.rawDescription;
         const override = rowTagOverrides[row.rowIndex];
         const matchedTag = override ? undefined : matchTagByKeywords(description, tags);
         const tagId = override?.tagId || matchedTag?.id;
-        const categoryId = override?.categoryId || matchedTag?.defaultCategoryId;
+        const categoryId = override?.categoryId || matchedTag?.defaultCategoryId || uncategorizedCategoryId;
 
         return {
           type: row.inferredType || 'expense',
