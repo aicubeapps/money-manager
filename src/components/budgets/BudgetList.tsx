@@ -101,7 +101,7 @@ const BudgetList = ({ budgets, categories, onEdit, onDelete, onAdd }: BudgetList
                   <div className="flex items-center justify-between text-xs pt-1.5 mt-1.5 border-t border-gray-100 dark:border-gray-700">
                     <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">📦 Misc</span>
                     <span className={`font-medium ${misc < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                      {formatCurrency(misc)}
+                      {misc < 0 ? `(${formatCurrency(Math.abs(misc))})` : formatCurrency(misc)}
                     </span>
                   </div>
 

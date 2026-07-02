@@ -54,6 +54,7 @@ export interface Tag {
   defaultAccountId?: string;
   defaultCategoryId?: string;
   importKeywords?: string[];
+  excludeFromBudget: boolean;
   createdAt: Date;
 }
 

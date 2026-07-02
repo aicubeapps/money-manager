@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDashboardData } from '../hooks/useDashboardData';
 import SummaryCards from '../components/dashboard/SummaryCards';
+import BudgetBurnRateCard from '../components/dashboard/BudgetBurnRateCard';
 import ExpenseByCategoryChart from '../components/dashboard/ExpenseByCategoryChart';
 import MonthlyTrendChart from '../components/dashboard/MonthlyTrendChart';
 import AccountDistributionChart from '../components/dashboard/AccountDistributionChart';
@@ -29,6 +30,7 @@ const DashboardPage = () => {
     monthlyTrend,
     accountDistribution,
     previousPeriodChange,
+    budgetBurnRate,
     loading,
     error,
   } = useDashboardData(view);
@@ -91,6 +93,8 @@ const DashboardPage = () => {
         monthlySavings={monthlySavings}
         previousPeriodChange={previousPeriodChange}
       />
+
+      <BudgetBurnRateCard burnRate={budgetBurnRate} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-5">

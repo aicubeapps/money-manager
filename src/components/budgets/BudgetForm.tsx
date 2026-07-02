@@ -5,24 +5,19 @@ import { z } from 'zod';
 import { HiX, HiPlus, HiTrash } from 'react-icons/hi';
 import type { Budget, Category } from '../../types';
 import { formatCurrency } from '../../utils/format';
-import { getMiscAmount, sumAllocations } from '../../utils/budget';
+import { getMiscAmount } from '../../utils/budget';
 
 const allocationSchema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   amount: z.number().min(0.01, 'Amount must be greater than 0'),
 });
 
-const budgetSchema = z
-  .object({
-    month: z.number().min(1).max(12),
-    year: z.number().min(2000).max(2100),
-    amount: z.number().min(0.01, 'Amount must be greater than 0'),
-    allocations: z.array(allocationSchema),
-  })
-  .refine(
-    (data) => sumAllocations(data.allocations) <= data.amount,
-    { message: 'Allocated amounts cannot exceed the overall budget', path: ['allocations'] }
-  );
+const budgetSchema = z.object({
+  month: z.number().min(1).max(12),
+  year: z.number().min(2000).max(2100),
+  amount: z.number().min(0.01, 'Amount must be greater than 0'),
+  allocations: z.array(allocationSchema),
+});
 
 type FormData = z.infer<typeof budgetSchema>;
 
@@ -61,7 +56,6 @@ const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) =
   const overallAmount = watch('amount') || 0;
   const allocations = watch('allocations') || [];
   const miscAmount = getMiscAmount(overallAmount, allocations);
-  const allocationsError = (errors.allocations as unknown as { message?: string })?.message;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
@@ -161,15 +155,19 @@ const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) =
             {fields.some((_, index) => errors.allocations?.[index]?.categoryId || errors.allocations?.[index]?.amount) && (
               <p className="text-red-500 text-xs mt-1">Each allocation needs a category and an amount greater than 0.</p>
             )}
-            {allocationsError && <p className="text-red-500 text-xs mt-1">{allocationsError}</p>}
           </div>
 
           <div className="flex justify-between items-center px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-700/50">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Misc (unallocated)</span>
             <span className={`text-sm font-semibold ${miscAmount < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
-              {formatCurrency(miscAmount)}
+              {miscAmount < 0 ? `(${formatCurrency(Math.abs(miscAmount))})` : formatCurrency(miscAmount)}
             </span>
           </div>
+          {miscAmount < 0 && (
+            <p className="text-xs text-red-500 -mt-2">
+              Allocations exceed the overall budget by {formatCurrency(Math.abs(miscAmount))}.
+            </p>
+          )}
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onCancel} className="btn-secondary flex-1 justify-center">Cancel</button>

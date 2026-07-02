@@ -17,15 +17,17 @@ const TAGS_COLLECTION = 'tags';
 
 export const createTag = async (
   userId: string,
-  data: Omit<Tag, 'id' | 'userId' | 'createdAt'>
+  data: Omit<Tag, 'id' | 'userId' | 'createdAt' | 'excludeFromBudget'> & { excludeFromBudget?: boolean }
 ) => {
   const now = new Date();
+  const excludeFromBudget = data.excludeFromBudget ?? false;
   const docRef = await addDoc(collection(db, TAGS_COLLECTION), {
     ...data,
+    excludeFromBudget,
     userId,
     createdAt: now,
   });
-  return { id: docRef.id, ...data, userId, createdAt: now } as Tag;
+  return { id: docRef.id, ...data, excludeFromBudget, userId, createdAt: now } as Tag;
 };
 
 export const updateTag = async (
@@ -44,7 +46,10 @@ export const deleteTag = async (tagId: string) => {
 export const getTags = async (userId: string) => {
   const q = query(collection(db, TAGS_COLLECTION), where('userId', '==', userId));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Tag[];
+  return snapshot.docs.map((doc) => {
+    const data = doc.data();
+    return { id: doc.id, ...data, excludeFromBudget: data.excludeFromBudget ?? false };
+  }) as Tag[];
 };
 
 export const getTopUsedTags = (
