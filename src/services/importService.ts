@@ -1,3 +1,4 @@
+import { parse, isValid } from 'date-fns';
 import type { Transaction } from '../types';
 
 export interface ImportRow {
@@ -100,18 +101,24 @@ export const parseCSV = (fileContent: string): { headers: string[]; rows: string
   return { headers, rows };
 };
 
-// Parses a date string in DD/MM/YYYY, MM/DD/YYYY, or YYYY-MM-DD format.
-// Returns undefined (with no guess) if the format is ambiguous (e.g. both
-// segments could be day or month, like 03/04/2024).
+// Known unambiguous date/time formats seen in bank CSV exports, tried in
+// order until one parses successfully (Kotak Mahindra Bank uses the first
+// two; ISO is kept as a fallback for non-Indian-bank CSVs). Add new bank
+// formats to this list as they come up.
+const KNOWN_DATE_FORMATS = ['dd-MM-yyyy HH:mm:ss', 'dd-MM-yyyy', 'yyyy-MM-dd'];
+
+// Parses a date string against KNOWN_DATE_FORMATS first, falling back to the
+// ambiguity-aware DD/MM/YYYY vs MM/DD/YYYY slash handling below. Returns
+// undefined (with no guess) if the format is ambiguous (e.g. both segments
+// could be day or month, like 03/04/2024) or doesn't match anything known.
 const parseDate = (raw: string): { date?: Date; error?: string } => {
   const value = raw.trim();
 
-  // YYYY-MM-DD (unambiguous)
-  const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (isoMatch) {
-    const [, year, month, day] = isoMatch;
-    const date = new Date(Number(year), Number(month) - 1, Number(day));
-    return { date };
+  for (const formatString of KNOWN_DATE_FORMATS) {
+    const parsed = parse(value, formatString, new Date());
+    if (isValid(parsed)) {
+      return { date: parsed };
+    }
   }
 
   // DD/MM/YYYY or MM/DD/YYYY
