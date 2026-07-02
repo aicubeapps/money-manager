@@ -28,10 +28,14 @@ export const useBudgets = (month?: number, year?: number) => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Budget[];
+        const data = snapshot.docs.map((doc) => {
+          const docData = doc.data();
+          return {
+            id: doc.id,
+            ...docData,
+            allocations: docData.allocations || [],
+          };
+        }) as Budget[];
         setBudgets(data);
         setLoading(false);
         setError(null);

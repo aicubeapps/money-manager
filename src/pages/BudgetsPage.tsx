@@ -46,7 +46,7 @@ const BudgetsPage = () => {
   const handleAdd = () => { setEditingBudget(null); setShowForm(true); };
   const handleEdit = (budget: Budget) => { setEditingBudget(budget); setShowForm(true); };
 
-  const handleSave = async (data: any) => {
+  const handleSave = async (data: { month: number; year: number; amount: number; allocations: { categoryId: string; amount: number }[] }) => {
     if (!currentUser) return;
     try {
       if (editingBudget) {
