@@ -12,6 +12,7 @@ import BudgetsPage from './pages/BudgetsPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import TagsPage from './pages/TagsPage';
+import AboutPage from './pages/AboutPage';
 import ImportPage from './pages/ImportPage';
 import ToastContainer from './components/common/Toast';
 
@@ -32,6 +33,7 @@ function App() {
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/settings/tags" element={<TagsPage />} />
+                <Route path="/settings/about" element={<AboutPage />} />
                 <Route path="/transactions/import" element={<ImportPage />} />
               </Route>
             </Route>
