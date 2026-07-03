@@ -84,7 +84,7 @@ const SettingsPage = () => {
             onClick={toggleTheme}
             className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${theme === 'dark' ? 'bg-primary-500' : 'bg-gray-300'}`}
           >
-            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}`} />
+            <span className={`absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${theme === 'dark' ? 'translate-x-6' : 'translate-x-0'}`} />
           </button>
         </div>
       </div>
@@ -110,7 +110,7 @@ const SettingsPage = () => {
             onClick={() => setCurrencyEnabled(!currencyEnabled)}
             className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${currencyEnabled ? 'bg-primary-500' : 'bg-gray-300'}`}
           >
-            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${currencyEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+            <span className={`absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${currencyEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
           </button>
         </div>
 
