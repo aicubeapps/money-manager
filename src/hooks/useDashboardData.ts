@@ -35,7 +35,7 @@ interface DashboardData {
   monthlyIncome: number;
   monthlyExpense: number;
   monthlySavings: number;
-  expenseByCategory: { categoryId: string; name: string; value: number; color: string }[];
+  expenseByCategory: { categoryId: string; name: string; icon: string; value: number; color: string }[];
   monthlyTrend: { month: string; income: number; expense: number }[];
   accountDistribution: { name: string; value: number; color: string }[];
   previousPeriodChange: {
@@ -127,6 +127,7 @@ export const useDashboardData = (view: TimeView = 'month', refreshKey = 0) => {
       return {
         categoryId: catId,
         name: category ? category.name : 'Unknown',
+        icon: category?.icon || '📌',
         value,
         color: category?.color || '#636E72',
       };

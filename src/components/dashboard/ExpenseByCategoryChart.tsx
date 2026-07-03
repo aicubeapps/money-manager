@@ -1,28 +1,23 @@
-import { useRef } from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useState } from 'react';
+import { HiChevronDown, HiChevronUp } from 'react-icons/hi';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 
 interface ExpenseByCategoryChartProps {
-  data: { categoryId: string; name: string; value: number; color: string }[];
+  data: { categoryId: string; name: string; icon: string; value: number; color: string }[];
   onSegmentClick?: (categoryId: string) => void;
 }
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#FF9F43', '#6C5CE7', '#FD79A8', '#00B894', '#FDCB6E', '#74B9FF', '#A29BFE', '#E17055', '#636E72'];
+const COLLAPSED_LIMIT = 6;
 
-// Recharts (3.8.1) already shows tooltips on a stationary tap via its own
-// touch handling plus the browser's synthetic mouse events — verified
-// empirically, no extra wiring needed for that. The remaining issue is
-// specific to THIS chart: a tap ALSO fires Pie's onClick (drill-down)
-// simultaneously with the tooltip, so on touch the user never actually sees
-// the tooltip before the drill-down modal covers it. Fix: on touch-capable
-// devices, the first tap on a segment only shows the tooltip; a second tap
-// on the SAME segment within this window confirms the drill-down. Desktop
-// mouse clicks are unaffected (single click still drills down immediately),
-// since there's no tooltip-vs-click race for hover-capable pointers.
-const CONFIRM_TAP_WINDOW_MS = 1200;
-const isTouchCapable = () => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-
+// Was a Recharts Pie chart with a custom legend — on mobile the legend
+// labels overlapped the slice emoji/percentage labels and wrapped badly
+// (confirmed via screenshot). A horizontal bar list avoids that whole class
+// of layout problem: no absolute-positioned labels fighting for space, and
+// every row's text has a full-width line to itself.
 const ExpenseByCategoryChart = ({ data, onSegmentClick }: ExpenseByCategoryChartProps) => {
-  const pendingTap = useRef<{ categoryId: string; time: number } | null>(null);
+  const formatCurrency = useFormatCurrency();
+  const [showAll, setShowAll] = useState(false);
 
   if (data.length === 0) {
     return (
@@ -32,57 +27,62 @@ const ExpenseByCategoryChart = ({ data, onSegmentClick }: ExpenseByCategoryChart
     );
   }
 
-  const chartData = data.map((item, index) => ({
-    ...item,
-    color: item.color || COLORS[index % COLORS.length],
-  }));
-
-  const handleSegmentClick = (entry: { payload?: { categoryId?: string } }) => {
-    const categoryId = entry.payload?.categoryId;
-    if (!categoryId || !onSegmentClick) return;
-
-    if (!isTouchCapable()) {
-      onSegmentClick(categoryId);
-      return;
-    }
-
-    const now = Date.now();
-    const pending = pendingTap.current;
-    if (pending && pending.categoryId === categoryId && now - pending.time < CONFIRM_TAP_WINDOW_MS) {
-      pendingTap.current = null;
-      onSegmentClick(categoryId);
-    } else {
-      // First tap: let the tooltip show (already happens via Recharts'
-      // touch handling); wait for a confirming second tap.
-      pendingTap.current = { categoryId, time: now };
-    }
-  };
+  const sorted = [...data].sort((a, b) => b.value - a.value);
+  const total = sorted.reduce((sum, item) => sum + item.value, 0);
+  const visible = showAll ? sorted : sorted.slice(0, COLLAPSED_LIMIT);
+  const hasMore = sorted.length > COLLAPSED_LIMIT;
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={chartData}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          outerRadius={100}
-          fill="#8884d8"
-          dataKey="value"
-          label={({ name, percent }: { name?: string; percent?: number }) =>
-            `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
-          }
-          onClick={onSegmentClick ? handleSegmentClick : undefined}
-          cursor={onSegmentClick ? 'pointer' : undefined}
+    <div className="space-y-3">
+      {visible.map((item, index) => {
+        const color = item.color || COLORS[index % COLORS.length];
+        const percent = total > 0 ? (item.value / total) * 100 : 0;
+
+        return (
+          <div
+            key={item.categoryId}
+            onClick={onSegmentClick ? () => onSegmentClick(item.categoryId) : undefined}
+            role={onSegmentClick ? 'button' : undefined}
+            tabIndex={onSegmentClick ? 0 : undefined}
+            className={`py-1 ${onSegmentClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+          >
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-gray-100 min-w-0">
+                <span className="flex-shrink-0">{item.icon}</span>
+                <span className="truncate">{item.name}</span>
+              </span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
+                {formatCurrency(item.value)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${percent}%`, backgroundColor: color }}
+                />
+              </div>
+              <span className="text-xs text-gray-400 dark:text-gray-500 w-9 text-right flex-shrink-0">
+                {percent.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+        );
+      })}
+
+      {hasMore && (
+        <button
+          onClick={() => setShowAll((prev) => !prev)}
+          className="flex items-center gap-1 text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline pt-1"
         >
-          {chartData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Pie>
-        <Tooltip formatter={(value) => `₹${Number(value ?? 0).toFixed(2)}`} />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
+          {showAll ? (
+            <>Show less <HiChevronUp className="w-3.5 h-3.5" /></>
+          ) : (
+            <>Show all {sorted.length} categories <HiChevronDown className="w-3.5 h-3.5" /></>
+          )}
+        </button>
+      )}
+    </div>
   );
 };
 
