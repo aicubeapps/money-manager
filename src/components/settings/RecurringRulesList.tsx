@@ -216,8 +216,8 @@ const RecurringRulesList = () => {
               title={rule.isActive ? 'Deactivate' : 'Activate'}
             >
               <span
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
-                  rule.isActive ? 'translate-x-5' : 'translate-x-1'
+                className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                  rule.isActive ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>
