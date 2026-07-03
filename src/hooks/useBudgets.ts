@@ -4,7 +4,7 @@ import { db } from '../firebase/config';
 import type { Budget } from '../types';
 import { useAuth } from './useAuth';
 
-export const useBudgets = (month?: number, year?: number) => {
+export const useBudgets = (month?: number, year?: number, refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +48,7 @@ export const useBudgets = (month?: number, year?: number) => {
     );
 
     return () => unsubscribe();
-  }, [currentUser, month, year]);
+  }, [currentUser, month, year, refreshKey]);
 
   return { budgets, loading, error };
 };

@@ -58,13 +58,13 @@ const EMPTY_BURN_RATE: BudgetBurnRate = {
   calendarDaysLeft: 0,
 };
 
-export const useDashboardData = (view: TimeView = 'month') => {
-  const { accounts, loading: accountsLoading, error: accountsError } = useAccounts();
-  const { transactions, loading: transactionsLoading, error: transactionsError } = useTransactions();
-  const { categories, loading: categoriesLoading } = useCategories();
+export const useDashboardData = (view: TimeView = 'month', refreshKey = 0) => {
+  const { accounts, loading: accountsLoading, error: accountsError } = useAccounts(refreshKey);
+  const { transactions, loading: transactionsLoading, error: transactionsError } = useTransactions(undefined, refreshKey);
+  const { categories, loading: categoriesLoading } = useCategories(refreshKey);
   const now0 = new Date();
-  const { budgets: currentMonthBudgets, loading: budgetsLoading } = useBudgets(now0.getMonth() + 1, now0.getFullYear());
-  const { tags, loading: tagsLoading } = useTags();
+  const { budgets: currentMonthBudgets, loading: budgetsLoading } = useBudgets(now0.getMonth() + 1, now0.getFullYear(), refreshKey);
+  const { tags, loading: tagsLoading } = useTags(refreshKey);
 
   const loading = accountsLoading || transactionsLoading || categoriesLoading || budgetsLoading || tagsLoading;
   const error = accountsError || transactionsError;

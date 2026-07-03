@@ -4,7 +4,7 @@ import { db } from '../firebase/config';
 import type { Category } from '../types';
 import { useAuth } from './useAuth';
 
-export const useCategories = () => {
+export const useCategories = (refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ export const useCategories = () => {
     );
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, refreshKey]);
 
   return { categories, loading, error };
 };

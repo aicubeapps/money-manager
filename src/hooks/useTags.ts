@@ -4,7 +4,7 @@ import { db } from '../firebase/config';
 import type { Tag } from '../types';
 import { useAuth } from './useAuth';
 
-export const useTags = () => {
+export const useTags = (refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ export const useTags = () => {
     );
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, refreshKey]);
 
   return { tags, loading, error };
 };

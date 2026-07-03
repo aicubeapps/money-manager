@@ -9,7 +9,8 @@ import AccountDistributionChart from '../components/dashboard/AccountDistributio
 import FilteredTransactionView, { type TransactionFilterDescriptor } from '../components/common/FilteredTransactionView';
 import { formatDateRange, getDateRange } from '../utils/dateUtils';
 import type { TimeView } from '../utils/dateUtils';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import Skeleton from '../components/common/Skeleton';
+import PullToRefresh from '../components/common/PullToRefresh';
 import { useAuth } from '../hooks/useAuth';
 
 const TIME_VIEWS: { value: TimeView; label: string }[] = [
@@ -20,10 +21,34 @@ const TIME_VIEWS: { value: TimeView; label: string }[] = [
   { value: 'year', label: 'Year' },
 ];
 
+const DashboardSkeleton = () => (
+  <div className="space-y-6 animate-fade-in">
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <Skeleton width={220} height={28} className="mb-2" />
+        <Skeleton width={140} height={16} />
+      </div>
+      <Skeleton width={260} height={36} />
+    </div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {[0, 1, 2, 3].map((i) => <Skeleton key={i} height={92} />)}
+    </div>
+    <Skeleton height={100} />
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <Skeleton height={340} />
+      <Skeleton height={340} />
+      <div className="lg:col-span-2">
+        <Skeleton height={300} />
+      </div>
+    </div>
+  </div>
+);
+
 const DashboardPage = () => {
   const [view, setView] = useState<TimeView>('month');
+  const [refreshKey, setRefreshKey] = useState(0);
   const { userData } = useAuth();
-  const { accounts } = useAccounts();
+  const { accounts } = useAccounts(refreshKey);
   const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
   const {
     netWorth,
@@ -37,7 +62,7 @@ const DashboardPage = () => {
     budgetBurnRate,
     loading,
     error,
-  } = useDashboardData(view);
+  } = useDashboardData(view, refreshKey);
 
   const now = new Date();
   const { start, end } = getDateRange(view, now);
@@ -49,7 +74,12 @@ const DashboardPage = () => {
     return 'Good evening';
   };
 
-  if (loading) return <LoadingSpinner message="Loading your dashboard..." />;
+  const handleRefresh = async () => {
+    setRefreshKey((k) => k + 1);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  };
+
+  if (loading) return <DashboardSkeleton />;
 
   if (error) {
     return (
@@ -62,6 +92,7 @@ const DashboardPage = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -134,6 +165,7 @@ const DashboardPage = () => {
         />
       )}
     </div>
+    </PullToRefresh>
   );
 };
 

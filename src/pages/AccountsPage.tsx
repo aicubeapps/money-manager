@@ -12,7 +12,7 @@ import {
 } from '../services/accountService';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from '../components/common/Toast';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import Skeleton from '../components/common/Skeleton';
 import type { Account, AccountGroup, AccountType } from '../types';
 
 type AccountFormPayload = {
@@ -25,6 +25,26 @@ type AccountFormPayload = {
   statementDate?: number;
   dueDate?: number;
 };
+
+const AccountListSkeleton = () => (
+  <div className="space-y-5 animate-fade-in">
+    <div className="flex items-center justify-between">
+      <div>
+        <Skeleton width={140} height={28} className="mb-2" />
+        <Skeleton width={120} height={16} />
+      </div>
+      <Skeleton width={150} height={36} />
+    </div>
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <Skeleton height={210} />
+      <Skeleton height={210} />
+    </div>
+    <Skeleton width={220} height={48} />
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} height={130} />)}
+    </div>
+  </div>
+);
 
 const AccountsPage = () => {
   const { currentUser } = useAuth();
@@ -99,7 +119,7 @@ const AccountsPage = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading accounts..." />;
+    return <AccountListSkeleton />;
   }
 
   if (error) {

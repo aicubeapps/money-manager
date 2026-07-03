@@ -11,16 +11,59 @@ import { createRecurringRule } from '../services/firestore/recurringRules';
 import { calculateNextDueDate } from '../utils/recurringDates';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from '../components/common/Toast';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import Skeleton from '../components/common/Skeleton';
+import PullToRefresh from '../components/common/PullToRefresh';
 import type { Transaction } from '../types';
+
+const TransactionsListSkeleton = () => (
+  <div className="space-y-4 animate-fade-in">
+    <div className="flex items-center justify-between">
+      <div>
+        <Skeleton width={140} height={28} className="mb-2" />
+        <Skeleton width={100} height={16} />
+      </div>
+      <Skeleton width={140} height={36} />
+    </div>
+    <div className="grid grid-cols-2 gap-3">
+      <Skeleton height={64} />
+      <Skeleton height={64} />
+    </div>
+    <Skeleton height={48} />
+    <div className="space-y-4">
+      {[0, 1, 2].map((group) => (
+        <div key={group} className="space-y-2">
+          <Skeleton width={120} height={14} />
+          {[0, 1].map((row) => (
+            <div key={row} className="card p-4 flex items-center gap-4">
+              <Skeleton width={40} height={40} shape="circle" />
+              <div className="flex-1 space-y-2">
+                <Skeleton width="60%" height={14} />
+                <Skeleton width="40%" height={12} />
+              </div>
+              <Skeleton width={64} height={16} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 const TransactionsPage = () => {
   const { currentUser } = useAuth();
-  const { transactions, loading, error } = useTransactions();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { transactions, loading, error } = useTransactions(undefined, refreshKey);
   const { accounts } = useAccounts();
   const { categories } = useCategories();
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  const handleRefresh = async () => {
+    setRefreshKey((k) => k + 1);
+    // Give the resubscribed listener a moment to settle so the pull
+    // indicator doesn't just flash instantly.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  };
 
   const expenseCategories = categories.filter((c) => c.type === 'expense');
   const incomeCategories = categories.filter((c) => c.type === 'income');
@@ -84,11 +127,11 @@ const TransactionsPage = () => {
     }
   };
 
-  if (loading) return <LoadingSpinner message="Loading transactions..." />;
+  if (loading) return <TransactionsListSkeleton />;
   if (error) return <div className="card p-6 text-red-500 text-center">Error: {error}</div>;
 
   return (
-    <>
+    <PullToRefresh onRefresh={handleRefresh}>
       <div className="flex justify-end mb-3">
         <Link to="/transactions/import" className="btn-secondary text-sm">
           <HiUpload className="w-4 h-4" /> Import CSV
@@ -112,7 +155,7 @@ const TransactionsPage = () => {
           onCancel={() => { setShowForm(false); setEditingTransaction(null); }}
         />
       )}
-    </>
+    </PullToRefresh>
   );
 };
 
