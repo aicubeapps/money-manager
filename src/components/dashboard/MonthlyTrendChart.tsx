@@ -1,11 +1,12 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush } from 'recharts';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 
 interface MonthlyTrendChartProps {
   data: { month: string; income: number; expense: number }[];
 }
 
 const MonthlyTrendChart = ({ data }: MonthlyTrendChartProps) => {
+  const formatCurrency = useFormatCurrency();
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">

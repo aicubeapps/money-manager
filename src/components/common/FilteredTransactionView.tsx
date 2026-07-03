@@ -7,7 +7,7 @@ import { useTags } from '../../hooks/useTags';
 import { isExcludedFromBudget } from '../../utils/budgetSpend';
 import { getAccountIcon, getAccountColor } from '../../utils/accountHelpers';
 import { calculateAccountBalance } from '../../utils/accountBalance';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import TransactionList from '../transactions/TransactionList';
 import LoadingSpinner from './LoadingSpinner';
 import EmptyState from './EmptyState';
@@ -74,6 +74,7 @@ const matchesFilter = (t: Transaction, filter: TransactionFilterDescriptor, tags
 const SWIPE_CLOSE_THRESHOLD_PX = 80;
 
 const FilteredTransactionView = ({ isOpen, title, filter, mode = 'transactions', onClose }: FilteredTransactionViewProps) => {
+  const formatCurrency = useFormatCurrency();
   const { transactions, loading: transactionsLoading } = useTransactions();
   const { accounts, loading: accountsLoading } = useAccounts();
   const { categories } = useCategories();

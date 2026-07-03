@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { HiPencil, HiTrash, HiPlus } from 'react-icons/hi';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { getMiscAmount, sumAllocations } from '../../utils/budget';
 import { getCategorySpend } from '../../utils/budgetSpend';
 import type { Budget, Category, Tag, Transaction } from '../../types';
@@ -21,6 +21,7 @@ interface BudgetListProps {
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete, onAdd }: BudgetListProps) => {
+  const formatCurrency = useFormatCurrency();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
 

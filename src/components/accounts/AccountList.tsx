@@ -11,7 +11,7 @@ import {
 } from 'react-icons/hi';
 import { FaWallet, FaCreditCard, FaUniversity } from 'react-icons/fa';
 import type { Account, Transaction } from '../../types';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { getAccountIcon, getAccountColor } from '../../utils/accountHelpers';
 import { calculateAccountBalance } from '../../utils/accountBalance';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -50,6 +50,7 @@ const AccountList = ({
   onDelete,
   onAdd,
 }: AccountListProps) => {
+  const formatCurrency = useFormatCurrency();
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
