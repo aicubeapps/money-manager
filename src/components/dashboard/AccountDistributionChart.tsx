@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 
 interface AccountDistributionChartProps {
   data: { name: string; value: number; color: string }[];
@@ -8,6 +8,7 @@ interface AccountDistributionChartProps {
 const COLORS = ['#3B82F6', '#22C55E', '#8B5CF6', '#EAB308', '#6366F1', '#EF4444', '#14B8A6'];
 
 const AccountDistributionChart = ({ data }: AccountDistributionChartProps) => {
+  const formatCurrency = useFormatCurrency();
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">

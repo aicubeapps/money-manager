@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { HiPencil, HiTrash, HiPlus, HiSearch } from 'react-icons/hi';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import type { Transaction, Account, Category, Tag } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { getTags } from '../../services/tagService';
@@ -31,6 +31,7 @@ const TYPE_STYLES: Record<string, { text: string; bg: string; label: string; pre
 };
 
 const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete, onAdd, compact = false }: TransactionListProps) => {
+  const formatCurrency = useFormatCurrency();
   const { currentUser } = useAuth();
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [searchTerm, setSearchTerm] = useState('');

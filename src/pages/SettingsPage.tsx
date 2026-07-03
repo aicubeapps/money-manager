@@ -1,12 +1,29 @@
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
-import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiChevronRight } from 'react-icons/hi';
+import { useCurrency } from '../context/CurrencyContext';
+import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiOutlineCurrencyDollar, HiChevronRight } from 'react-icons/hi';
 import RecurringRulesList from '../components/settings/RecurringRulesList';
+import { FIAT_CURRENCIES, CRYPTO_CURRENCIES } from '../services/currencyService';
+
+const formatLastUpdated = (timestamp: number | null) => {
+  if (!timestamp) return 'Never';
+  return new Date(timestamp).toLocaleString();
+};
 
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
   const { userData, logout } = useAuth();
+  const {
+    enabled: currencyEnabled,
+    setEnabled: setCurrencyEnabled,
+    targetCurrency,
+    setTargetCurrency,
+    lastUpdated,
+    loading: ratesLoading,
+    error: ratesError,
+    refresh: refreshRates,
+  } = useCurrency();
 
   return (
     <div className="space-y-6 max-w-2xl animate-fade-in">
@@ -70,6 +87,74 @@ const SettingsPage = () => {
             <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}`} />
           </button>
         </div>
+      </div>
+
+      {/* Display Currency */}
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-2">
+          <HiOutlineCurrencyDollar className="w-4 h-4" /> Display Currency
+        </h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          All amounts are stored and entered in INR. This only changes how they're
+          <em> displayed</em> — using a cached exchange rate, not a live rate at the
+          time of each transaction.
+        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-medium text-gray-900 dark:text-white">Show converted values</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {currencyEnabled ? `Showing amounts in ${targetCurrency}` : 'Showing amounts in INR'}
+            </div>
+          </div>
+          <button
+            onClick={() => setCurrencyEnabled(!currencyEnabled)}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${currencyEnabled ? 'bg-primary-500' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${currencyEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        {currencyEnabled && (
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="form-label">Currency</label>
+              <select
+                value={targetCurrency}
+                onChange={(e) => setTargetCurrency(e.target.value)}
+                className="form-input"
+              >
+                <optgroup label="Fiat">
+                  {FIAT_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Crypto">
+                  {CRYPTO_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">
+                {ratesError ? (
+                  <span className="text-amber-600 dark:text-amber-400">{ratesError}</span>
+                ) : (
+                  <>Rates last updated: {formatLastUpdated(lastUpdated)}</>
+                )}
+              </span>
+              <button
+                onClick={() => refreshRates()}
+                disabled={ratesLoading}
+                className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-50"
+              >
+                <HiOutlineRefresh className={`w-3.5 h-3.5 ${ratesLoading ? 'animate-spin' : ''}`} />
+                {ratesLoading ? 'Refreshing...' : 'Refresh now'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tags */}

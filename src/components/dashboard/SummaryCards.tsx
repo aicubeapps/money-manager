@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { HiTrendingUp, HiTrendingDown, HiMinus } from 'react-icons/hi';
 import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
 import type { Account } from '../../types';
@@ -27,6 +27,7 @@ const SummaryCards = ({
   previousPeriodChange,
   accounts,
 }: SummaryCardsProps) => {
+  const formatCurrency = useFormatCurrency();
   const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor; mode?: 'transactions' | 'accounts' } | null>(null);
   const assetAccountIds = accounts.filter((a) => a.accountGroup === 'asset').map((a) => a.id);
   const getChangeBadge = (change: number, invertColor = false) => {

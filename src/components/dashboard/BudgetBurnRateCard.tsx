@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import type { BudgetBurnRate } from '../../hooks/useDashboardData';
 
 interface BudgetBurnRateCardProps {
@@ -6,6 +6,7 @@ interface BudgetBurnRateCardProps {
 }
 
 const BudgetBurnRateCard = ({ burnRate }: BudgetBurnRateCardProps) => {
+  const formatCurrency = useFormatCurrency();
   if (!burnRate.hasBudget) return null;
 
   const { spentSoFar, remainingBudget, estimatedDaysLeft, calendarDaysLeft } = burnRate;

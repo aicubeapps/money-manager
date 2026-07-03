@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
+import { useCurrency } from '../../context/CurrencyContext';
 import { useRecurringReminders } from '../../hooks/useRecurringReminders';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { createTransaction } from '../../services/transactionService';
 import { updateRecurringRule } from '../../services/firestore/recurringRules';
 import { calculateNextDueDate } from '../../utils/recurringDates';
 import { toast } from '../common/Toast';
-import { formatCurrency } from '../../utils/format';
 import type { RecurringRule } from '../../types';
 import { HiOutlineMenu, HiOutlineMoon, HiOutlineSun, HiOutlineLogout } from 'react-icons/hi';
 import { FiBell } from 'react-icons/fi';
@@ -20,6 +21,8 @@ const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slic
 const Header = ({ toggleSidebar }: HeaderProps) => {
   const { currentUser, userData, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { enabled: currencyEnabled, targetCurrency } = useCurrency();
+  const formatCurrency = useFormatCurrency();
   const { dueRules } = useRecurringReminders();
   const [showReminders, setShowReminders] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -82,6 +85,14 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
           <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight hidden sm:block">
             ExpenseTracker
           </h1>
+          {currencyEnabled && (
+            <span
+              className="badge text-primary-700 bg-primary-100 dark:text-primary-300 dark:bg-primary-900/30 flex-shrink-0"
+              title="All data is stored in INR — this is a display-only conversion"
+            >
+              Displaying in {targetCurrency} (converted)
+            </span>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import LoginPage from './pages/LoginPage';
@@ -20,6 +21,7 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <CurrencyProvider>
         <HashRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -40,6 +42,7 @@ function App() {
           </Routes>
           <ToastContainer />
         </HashRouter>
+        </CurrencyProvider>
       </AuthProvider>
     </ThemeProvider>
   );

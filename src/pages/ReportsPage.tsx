@@ -5,7 +5,7 @@ import { useReports } from '../hooks/useReports';
 import { useAuth } from '../hooks/useAuth';
 import { generateReport, saveReport, deleteSavedReport } from '../services/reportService';
 import { formatDateRange, getDateRange } from '../utils/dateUtils';
-import { formatCurrency } from '../utils/format';
+import { useFormatCurrency } from '../hooks/useFormatCurrency';
 import type { TimeView } from '../utils/dateUtils';
 import type { Report } from '../types';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -24,6 +24,7 @@ const PERIODS = [
 ];
 
 const ReportsPage = () => {
+  const formatCurrency = useFormatCurrency();
   const { currentUser } = useAuth();
   const { transactions } = useTransactions();
   const { categories } = useCategories();

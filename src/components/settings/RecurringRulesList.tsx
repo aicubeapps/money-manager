@@ -12,7 +12,7 @@ import { getTags } from '../../services/tagService';
 import { toast } from '../common/Toast';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
-import { formatCurrency } from '../../utils/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import type { RecurringRule, RecurringFrequency, Tag, TransactionType } from '../../types';
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -44,6 +44,7 @@ const toEditFormState = (rule: RecurringRule): EditFormState => ({
 });
 
 const RecurringRulesList = () => {
+  const formatCurrency = useFormatCurrency();
   const { currentUser } = useAuth();
   const { accounts } = useAccounts();
   const { categories } = useCategories();
