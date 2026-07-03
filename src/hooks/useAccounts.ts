@@ -4,7 +4,7 @@ import { db } from '../firebase/config';
 import type { Account } from '../types';
 import { useAuth } from './useAuth';
 
-export const useAccounts = () => {
+export const useAccounts = (refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +48,7 @@ export const useAccounts = () => {
     );
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, refreshKey]);
 
   return { accounts, loading, error };
 };

@@ -4,11 +4,18 @@ import { db } from '../firebase/config';
 import type { Transaction } from '../types';
 import { useAuth } from './useAuth';
 
-export const useTransactions = (filters?: {
-  accountId?: string;
-  categoryId?: string;
-  type?: 'expense' | 'income' | 'transfer';
-}) => {
+export const useTransactions = (
+  filters?: {
+    accountId?: string;
+    categoryId?: string;
+    type?: 'expense' | 'income' | 'transfer';
+  },
+  /** Bump this to force the Firestore listener to unsubscribe and
+   * resubscribe (used by pull-to-refresh). onSnapshot is already realtime,
+   * so this doesn't surface "newer" data, but it does trigger a genuine
+   * listener teardown/recreate round-trip. */
+  refreshKey = 0
+) => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +66,7 @@ export const useTransactions = (filters?: {
     );
 
     return () => unsubscribe();
-  }, [currentUser, filters?.accountId, filters?.categoryId, filters?.type]);
+  }, [currentUser, filters?.accountId, filters?.categoryId, filters?.type, refreshKey]);
 
   return { transactions, loading, error };
 };
