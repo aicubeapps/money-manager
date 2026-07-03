@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
-import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiChevronRight } from 'react-icons/hi';
+import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiChevronRight } from 'react-icons/hi';
 import RecurringRulesList from '../components/settings/RecurringRulesList';
 
 const SettingsPage = () => {
@@ -107,6 +107,25 @@ const SettingsPage = () => {
         <div className="text-sm text-gray-500 dark:text-gray-400 mb-3">
           Your data is secured with Google authentication. All financial data is stored securely in Firestore.
         </div>
+      </div>
+
+      {/* About */}
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-2">
+          <HiOutlineInformationCircle className="w-4 h-4" /> About
+        </h2>
+        <Link
+          to="/settings/about"
+          className="flex items-center justify-between p-2 -m-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <div>
+            <div className="font-medium text-gray-900 dark:text-white">Help &amp; Support</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              How-to guide and bug reporting
+            </div>
+          </div>
+          <HiChevronRight className="w-4 h-4 text-gray-400" />
+        </Link>
       </div>
 
       {/* Sign out */}
