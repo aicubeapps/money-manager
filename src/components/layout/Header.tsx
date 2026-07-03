@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
-import { useCurrency } from '../../context/CurrencyContext';
 import { useRecurringReminders } from '../../hooks/useRecurringReminders';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { createTransaction } from '../../services/transactionService';
@@ -21,7 +20,6 @@ const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slic
 const Header = ({ toggleSidebar }: HeaderProps) => {
   const { currentUser, userData, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { enabled: currencyEnabled, targetCurrency } = useCurrency();
   const formatCurrency = useFormatCurrency();
   const { dueRules } = useRecurringReminders();
   const [showReminders, setShowReminders] = useState(false);
@@ -85,19 +83,11 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
           <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight hidden sm:block">
             ExpenseTracker
           </h1>
-          {currencyEnabled && (
-            <span
-              className="badge text-primary-700 bg-primary-100 dark:text-primary-300 dark:bg-primary-900/30 flex-shrink-0"
-              title="All data is stored in INR — this is a display-only conversion"
-            >
-              Displaying in {targetCurrency} (converted)
-            </span>
-          )}
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
-        <div className="relative">
+      <div className="flex items-center gap-1 relative">
+        <div>
           <button
             onClick={() => setShowReminders((prev) => !prev)}
             className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -117,7 +107,13 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowReminders(false)}
               />
-              <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 animate-fade-in">
+              {/* Anchored to the whole icon-cluster wrapper (which sits flush
+                  against the header's right edge via justify-between), not
+                  the bell button's own small wrapper — anchoring to the
+                  bell directly overflowed past the left viewport edge on
+                  narrow screens, since the bell isn't the rightmost icon.
+                  max-w caps it on very narrow viewports too. */}
+              <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 animate-fade-in">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                   <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
                     Recurring transactions due
