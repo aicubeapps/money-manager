@@ -195,44 +195,54 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
                       className="card px-4 py-3 flex items-center gap-3 hover:shadow-md transition-all duration-150 group"
                     >
                       {/* Category icon */}
-                      <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
-                        style={cat?.color ? { backgroundColor: `${cat.color}22` } : undefined}
-                      >
+                      <div className="flex items-center justify-center flex-shrink-0 text-lg w-9 h-9">
                         {cat?.icon || style.prefix}
                       </div>
 
                       {/* Details */}
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        {/* Row 1: category name (left) + tags (right) */}
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight truncate">
                             {cat ? cat.name : style.label}
                           </span>
-                          <span className={`badge ${style.bg} ${style.text} text-xs`}>{style.label}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-x-2 gap-y-0.5 leading-tight">
-                          <span>{getAccountName(transaction.accountId)}</span>
-                          {transaction.type === 'transfer' && transaction.fromAccountId && (
-                            <span>{getAccountName(transaction.fromAccountId)} → {getAccountName(transaction.toAccountId || '')}</span>
-                          )}
-                          {transaction.notes && <span className="truncate">• {transaction.notes}</span>}
                           {transaction.tags && transaction.tags.length > 0 && (
-                            <span className="flex gap-1 flex-wrap">
+                            <span className="flex gap-1 flex-wrap justify-end flex-shrink-0">
                               {transaction.tags.map((tag, i) => (
-                                <span key={i} className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded-full">
+                                <span key={i} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded-full">
                                   #{tag}
                                 </span>
                               ))}
                             </span>
                           )}
                         </div>
+
+                        {/* Row 2: type badge (left) + amount (right, aligned to badge) */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`badge ${style.bg} ${style.text} text-xs`}>{style.label}</span>
+                          <div className={`text-base font-bold ${style.text} flex-shrink-0`}>
+                            {style.prefix !== '↔' ? style.prefix : ''}{formatCurrency(transaction.amount)}
+                          </div>
+                        </div>
+
+                        {/* Row 3: note (left only), if present */}
+                        {transaction.notes && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate leading-tight">
+                            {transaction.notes}
+                          </div>
+                        )}
+
+                        {/* Account name — kept as-is */}
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                          <span>{getAccountName(transaction.accountId)}</span>
+                          {transaction.type === 'transfer' && transaction.fromAccountId && (
+                            <span>{getAccountName(transaction.fromAccountId)} → {getAccountName(transaction.toAccountId || '')}</span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Amount + actions */}
+                      {/* Actions */}
                       <div className="flex items-center gap-3 flex-shrink-0 self-stretch">
-                        <div className={`text-base font-bold ${style.text} flex items-center`}>
-                          {style.prefix !== '↔' ? style.prefix : ''}{formatCurrency(transaction.amount)}
-                        </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => onEdit(transaction)}
