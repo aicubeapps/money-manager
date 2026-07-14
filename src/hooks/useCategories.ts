@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Category } from '../types';
 import { useAuth } from './useAuth';
+import { subscribeWithRetry } from '../utils/firestoreRetry';
 
 export const useCategories = (refreshKey = 0) => {
   const { currentUser } = useAuth();
@@ -22,7 +23,7 @@ export const useCategories = (refreshKey = 0) => {
       where('userId', '==', currentUser.uid)
     );
 
-    const unsubscribe = onSnapshot(
+    const unsubscribe = subscribeWithRetry(
       q,
       (snapshot) => {
         const data = snapshot.docs.map((doc) => ({

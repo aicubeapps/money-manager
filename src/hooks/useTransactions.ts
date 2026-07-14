@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Transaction } from '../types';
 import { useAuth } from './useAuth';
+import { subscribeWithRetry } from '../utils/firestoreRetry';
 
 export const useTransactions = (
   filters?: {
@@ -40,7 +41,7 @@ export const useTransactions = (
       orderBy('date', 'desc')
     );
 
-    const unsubscribe = onSnapshot(
+    const unsubscribe = subscribeWithRetry(
       q,
       (snapshot) => {
         const data = snapshot.docs.map((doc) => {

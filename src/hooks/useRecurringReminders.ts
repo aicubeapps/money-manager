@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { RecurringRule } from '../types';
 import { isDue } from '../utils/recurringDates';
 import { useAuth } from './useAuth';
+import { subscribeWithRetry } from '../utils/firestoreRetry';
 
 export const useRecurringReminders = () => {
   const { currentUser } = useAuth();
@@ -24,7 +25,7 @@ export const useRecurringReminders = () => {
       where('isActive', '==', true)
     );
 
-    const unsubscribe = onSnapshot(
+    const unsubscribe = subscribeWithRetry(
       q,
       (snapshot) => {
         const rules = snapshot.docs.map((doc) => ({
