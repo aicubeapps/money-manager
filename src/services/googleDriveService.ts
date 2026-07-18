@@ -215,6 +215,49 @@ export const uploadJsonFile = async (name: string, folderId: string, content: st
   );
 };
 
+/** Uploads a binary image file as a new Drive file in the given folder (multipart upload). */
+export const uploadImageFile = async (file: File, folderId: string): Promise<DriveFile> => {
+  const metadata = {
+    name: file.name || `receipt-${Date.now()}`,
+    parents: [folderId],
+    mimeType: file.type || 'image/jpeg',
+  };
+  const boundary = `expensetracker-${Date.now()}`;
+  // Built as a Blob (not a plain string) so the binary image bytes aren't
+  // mangled by JS string/UTF-16 handling the way the JSON upload above can
+  // safely use a string body.
+  const body = new Blob([
+    `--${boundary}\r\n`,
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+    JSON.stringify(metadata),
+    `\r\n--${boundary}\r\n`,
+    `Content-Type: ${metadata.mimeType}\r\n\r\n`,
+    file,
+    `\r\n--${boundary}--`,
+  ]);
+
+  return withReauth<DriveFile>(() =>
+    fetch(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,name,createdTime`, {
+      method: 'POST',
+      headers: { ...authHeader(), 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body,
+    })
+  );
+};
+
+/** Downloads a file's raw bytes (for images — pair with URL.createObjectURL for display). */
+export const downloadFileBlob = async (fileId: string): Promise<Blob> => {
+  if (!accessToken) throw new Error('Not connected to Google Drive.');
+  let res = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, { headers: authHeader() });
+  if (res.status === 401) {
+    const reauthed = await reconnectDriveSilently();
+    if (!reauthed) throw new Error('Google Drive session expired — please reconnect.');
+    res = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, { headers: authHeader() });
+  }
+  if (!res.ok) throw new Error(`Failed to download file (${res.status}).`);
+  return res.blob();
+};
+
 export const downloadFileContent = async (fileId: string): Promise<string> => {
   if (!accessToken) throw new Error('Not connected to Google Drive.');
   let res = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, { headers: authHeader() });
