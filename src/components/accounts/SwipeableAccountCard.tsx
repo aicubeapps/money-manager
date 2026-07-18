@@ -38,6 +38,12 @@ const SwipeableAccountCard = ({
   const [panelOpen, setPanelOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
 
+  // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
+  const [debugTouchStarted, setDebugTouchStarted] = useState(false);
+  const [debugMoveCount, setDebugMoveCount] = useState(0);
+  const [debugListenerAttached, setDebugListenerAttached] = useState(false);
+  // END TEMP DEBUG
+
   const cardRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
   const startY = useRef(0);
@@ -90,6 +96,8 @@ const SwipeableAccountCard = ({
       didDrag.current = false;
       longPressFired.current = false;
       setDragging(true);
+      setDebugTouchStarted(true); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
+      setDebugMoveCount(0); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
 
       longPressTimer.current = setTimeout(() => {
         longPressFired.current = true;
@@ -99,6 +107,7 @@ const SwipeableAccountCard = ({
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      setDebugMoveCount((n) => n + 1); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
       const dx = e.touches[0].clientX - startX.current;
       const dy = e.touches[0].clientY - startY.current;
 
@@ -163,12 +172,14 @@ const SwipeableAccountCard = ({
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
+    setDebugListenerAttached(true); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
 
     return () => {
       clearLongPressTimer();
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
+      setDebugListenerAttached(false); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onLongPress, onSwipeRightQuickAdd]);
@@ -202,6 +213,14 @@ const SwipeableAccountCard = ({
         }}
       >
         {children}
+
+        {/* TEMP DEBUG — REMOVE BEFORE FINAL COMMIT */}
+        <div
+          className="absolute top-1 right-1 z-10 pointer-events-none rounded bg-black/70 px-1.5 py-0.5 text-[9px] leading-tight font-mono text-lime-300"
+        >
+          att:{debugListenerAttached ? 'Y' : 'N'} ts:{debugTouchStarted ? 'Y' : 'N'} mv:{debugMoveCount} tx:{Math.round(translateX)}
+        </div>
+        {/* END TEMP DEBUG */}
       </div>
     </div>
   );
