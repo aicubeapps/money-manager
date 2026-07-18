@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { HiPencil, HiTrash, HiPlus, HiSearch } from 'react-icons/hi';
+import { HiPencil, HiTrash, HiPlus, HiSearch, HiOutlinePaperClip } from 'react-icons/hi';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import type { Transaction, Account, Category, Tag } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { getTags } from '../../services/tagService';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
+import ReceiptViewerModal from '../common/ReceiptViewerModal';
 import { format } from 'date-fns';
 
 interface TransactionListProps {
@@ -39,6 +40,7 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
   const [dateTo, setDateTo] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [viewingReceiptFileId, setViewingReceiptFileId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -249,6 +251,18 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
 
                       {/* Amount + actions */}
                       <div className="flex items-center gap-3 flex-shrink-0">
+                        {transaction.receiptDriveFileId && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingReceiptFileId(transaction.receiptDriveFileId!);
+                            }}
+                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                            title="View receipt"
+                          >
+                            <HiOutlinePaperClip className="w-4 h-4 text-gray-400" />
+                          </button>
+                        )}
                         <div className={`text-base font-bold ${style.text}`}>
                           {style.prefix !== '↔' ? style.prefix : ''}{formatCurrency(transaction.amount)}
                         </div>
@@ -289,6 +303,10 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
         onCancel={() => setDeleteTarget(null)}
         danger
       />
+
+      {viewingReceiptFileId && (
+        <ReceiptViewerModal fileId={viewingReceiptFileId} onClose={() => setViewingReceiptFileId(null)} />
+      )}
     </div>
   );
 };

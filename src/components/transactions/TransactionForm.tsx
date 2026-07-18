@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { HiX } from 'react-icons/hi';
+import { HiX, HiOutlineCamera, HiOutlinePhotograph, HiOutlineTrash } from 'react-icons/hi';
 import type { Transaction, Account, Category, CategoryType, Tag } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { getTags, createTag } from '../../services/tagService';
 import { createCategory } from '../../services/categoryService';
+import { isDriveConnected, hasConnectedBefore, reconnectDriveSilently, connectDrive } from '../../services/googleDriveService';
+import { uploadReceiptImage, deleteReceiptImage, getReceiptImageUrl, validateReceiptFile } from '../../services/receiptService';
 import { toast } from '../common/Toast';
 
 const transactionSchema = z
@@ -90,6 +92,88 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryType, setNewCategoryType] = useState<CategoryType>('expense');
   const [creatingCategory, setCreatingCategory] = useState(false);
+
+  const [driveReady, setDriveReady] = useState(isDriveConnected());
+  const [connectingDrive, setConnectingDrive] = useState(false);
+  const [receiptFileId, setReceiptFileId] = useState<string | null>(transaction?.receiptDriveFileId || null);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // If the user already connected Drive in a previous session, silently
+  // re-acquire a token here too (same pattern as SettingsPage) instead of
+  // making them click Connect again just to attach a receipt.
+  useEffect(() => {
+    if (driveReady) return;
+    if (!hasConnectedBefore()) return;
+    reconnectDriveSilently().then((ok) => setDriveReady(ok));
+  }, [driveReady]);
+
+  // Load a preview for a receipt already attached to the transaction being edited.
+  useEffect(() => {
+    if (!receiptFileId || !driveReady) return;
+    let cancelled = false;
+    getReceiptImageUrl(receiptFileId)
+      .then((url) => { if (!cancelled) setReceiptPreviewUrl(url); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // Only re-run when the file id itself changes, not on every driveReady flip.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receiptFileId]);
+
+  const handleConnectDriveInline = async () => {
+    setConnectingDrive(true);
+    try {
+      const ok = await connectDrive();
+      setDriveReady(ok);
+      if (!ok) toast.error('Could not connect to Google Drive');
+    } finally {
+      setConnectingDrive(false);
+    }
+  };
+
+  const handleReceiptSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const validationError = validateReceiptFile(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+    setReceiptUploading(true);
+    try {
+      const previousFileId = receiptFileId;
+      const newFileId = await uploadReceiptImage(file);
+      setReceiptFileId(newFileId);
+      const url = await getReceiptImageUrl(newFileId);
+      setReceiptPreviewUrl(url);
+      // Replace, not add — delete the old Drive file after the new one is
+      // safely uploaded, not before (so a failed upload doesn't lose the
+      // existing receipt).
+      if (previousFileId) deleteReceiptImage(previousFileId).catch(() => {});
+      toast.success('Receipt attached');
+    } catch (err) {
+      console.error('Error uploading receipt:', err);
+      toast.error('Failed to upload receipt');
+    } finally {
+      setReceiptUploading(false);
+    }
+  };
+
+  const handleRemoveReceipt = async () => {
+    if (!receiptFileId) return;
+    const idToDelete = receiptFileId;
+    setReceiptFileId(null);
+    setReceiptPreviewUrl(null);
+    try {
+      await deleteReceiptImage(idToDelete);
+    } catch (err) {
+      console.error('Error deleting receipt from Drive:', err);
+      toast.error('Removed here, but Drive deletion failed — it may still exist there');
+    }
+  };
 
   const {
     register,
@@ -236,6 +320,10 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
     }
     if (data.notes) payload.notes = data.notes;
     if (data.tagId) payload.tags = [data.tagId];
+    // Always set (not conditionally) so removing a receipt during an edit
+    // actually clears the field instead of leaving the old value in place —
+    // updateDoc only touches keys present in the payload.
+    payload.receiptDriveFileId = receiptFileId || null;
     if (data.isRecurring && data.recurringFrequency && data.recurringStartDate) {
       payload.recurringRule = {
         frequency: data.recurringFrequency,
@@ -438,6 +526,88 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
           <div>
             <label className="form-label">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
             <input {...register('notes')} className="form-input" placeholder="Add a note..." />
+          </div>
+
+          {/* Attach Receipt */}
+          <div>
+            <label className="form-label">Receipt <span className="text-gray-400 font-normal">(optional)</span></label>
+
+            {!driveReady ? (
+              <div className="p-3 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  Connect Google Drive to attach a receipt photo.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleConnectDriveInline}
+                  disabled={connectingDrive}
+                  className="btn-secondary text-xs py-1.5 px-3 mx-auto disabled:opacity-50"
+                >
+                  {connectingDrive ? 'Connecting...' : 'Connect Google Drive'}
+                </button>
+              </div>
+            ) : receiptPreviewUrl || receiptUploading ? (
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0 flex items-center justify-center bg-gray-50 dark:bg-gray-700">
+                  {receiptUploading ? (
+                    <span className="text-xs text-gray-400 animate-pulse">...</span>
+                  ) : (
+                    <img src={receiptPreviewUrl!} alt="Receipt preview" className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={receiptUploading}
+                    className="text-xs text-primary-600 dark:text-primary-400 hover:underline text-left disabled:opacity-50"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveReceipt}
+                    disabled={receiptUploading}
+                    className="flex items-center gap-1 text-xs text-red-500 hover:underline text-left disabled:opacity-50"
+                  >
+                    <HiOutlineTrash className="w-3.5 h-3.5" /> Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="btn-secondary flex-1 justify-center text-sm py-2"
+                >
+                  <HiOutlineCamera className="w-4 h-4" /> Camera
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn-secondary flex-1 justify-center text-sm py-2"
+                >
+                  <HiOutlinePhotograph className="w-4 h-4" /> Upload
+                </button>
+              </div>
+            )}
+
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleReceiptSelect}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleReceiptSelect}
+            />
           </div>
 
           {/* Tag */}

@@ -73,6 +73,10 @@ export interface Transaction {
   notes?: string;
   tags?: string[];
   attachments?: Attachment[];
+  /** Google Drive file ID of an attached receipt photo/screenshot, if any.
+   * Image bytes live in Drive (dedicated "ExpenseTracker Receipts" folder),
+   * never stored as base64 in Firestore. */
+  receiptDriveFileId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
