@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { useRecurringReminders } from '../../hooks/useRecurringReminders';
+import { useAccounts } from '../../hooks/useAccounts';
+import { useCategories } from '../../hooks/useCategories';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { createTransaction } from '../../services/transactionService';
 import { updateRecurringRule } from '../../services/firestore/recurringRules';
 import { calculateNextDueDate } from '../../utils/recurringDates';
 import { toast } from '../common/Toast';
+import ConfirmDialog from '../common/ConfirmDialog';
+import GlobalSearchOverlay from '../common/GlobalSearchOverlay';
 import type { RecurringRule } from '../../types';
-import { HiOutlineMenu, HiOutlineMoon, HiOutlineSun, HiOutlineLogout } from 'react-icons/hi';
+import { HiOutlineMenu, HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineSearch } from 'react-icons/hi';
 import { FiBell } from 'react-icons/fi';
 
 interface HeaderProps {
@@ -17,26 +21,41 @@ interface HeaderProps {
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
+type PendingRuleAction = { kind: 'confirm' | 'skip'; rule: RecurringRule };
+
 const Header = ({ toggleSidebar }: HeaderProps) => {
   const { currentUser, userData, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const formatCurrency = useFormatCurrency();
   const { dueRules } = useRecurringReminders();
+  const { accounts } = useAccounts();
+  const { categories } = useCategories();
   const [showReminders, setShowReminders] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<PendingRuleAction | null>(null);
 
-  const handleConfirm = async (rule: RecurringRule) => {
+  const getAccountName = (id?: string) => accounts.find((a) => a.id === id)?.name || 'Unknown account';
+  const getCategoryName = (id?: string) => categories.find((c) => c.id === id)?.name;
+
+  const runConfirm = async (rule: RecurringRule) => {
     if (!currentUser) return;
     setActioningId(rule.id);
     try {
+      const { type, amount, accountId, categoryId, description, tags, fromAccountId, toAccountId } =
+        rule.templateTransaction;
       await createTransaction(currentUser.uid, {
-        type: rule.templateTransaction.type,
+        type,
         date: new Date(),
-        amount: rule.templateTransaction.amount,
-        accountId: rule.templateTransaction.accountId,
-        categoryId: rule.templateTransaction.categoryId,
-        notes: rule.templateTransaction.description,
-        tags: rule.templateTransaction.tags,
+        amount,
+        notes: description,
+        tags,
+        // Mirrors TransactionForm's own onSubmit branch: transfers carry
+        // fromAccountId/toAccountId (accountId mirrors fromAccountId) and no
+        // category; expense/income carry accountId + categoryId only.
+        ...(type === 'transfer'
+          ? { accountId: fromAccountId!, fromAccountId, toAccountId }
+          : { accountId, ...(categoryId ? { categoryId } : {}) }),
       });
       await updateRecurringRule(rule.id, {
         nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth),
@@ -51,7 +70,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
     }
   };
 
-  const handleSkip = async (rule: RecurringRule) => {
+  const runSkip = async (rule: RecurringRule) => {
     setActioningId(rule.id);
     try {
       await updateRecurringRule(rule.id, {
@@ -66,7 +85,38 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
     }
   };
 
+  const handlePendingConfirm = () => {
+    if (!pendingAction) return;
+    if (pendingAction.kind === 'confirm') runConfirm(pendingAction.rule);
+    else runSkip(pendingAction.rule);
+  };
+
+  const pendingDialogCopy = (() => {
+    if (!pendingAction) return { title: '', message: '' };
+    const { rule } = pendingAction;
+    const desc = rule.templateTransaction.description || 'Recurring transaction';
+    if (pendingAction.kind === 'confirm') {
+      const amountText = formatCurrency(rule.templateTransaction.amount);
+      const detail =
+        rule.templateTransaction.type === 'transfer'
+          ? `from ${getAccountName(rule.templateTransaction.fromAccountId)} to ${getAccountName(rule.templateTransaction.toAccountId)}`
+          : `to ${getAccountName(rule.templateTransaction.accountId)}` +
+            (getCategoryName(rule.templateTransaction.categoryId)
+              ? ` (${getCategoryName(rule.templateTransaction.categoryId)})`
+              : '');
+      return {
+        title: 'Add this transaction?',
+        message: `This will add a ${amountText} ${rule.templateTransaction.type} ${detail} for "${desc}".`,
+      };
+    }
+    return {
+      title: 'Skip this occurrence?',
+      message: `"${desc}" will move to its next due date without adding a transaction.`,
+    };
+  })();
+
   return (
+    <>
     <header className="sticky top-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/80 px-4 py-2.5 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <button
@@ -138,14 +188,14 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
                       </div>
                       <div className="flex gap-2 mt-2">
                         <button
-                          onClick={() => handleSkip(rule)}
+                          onClick={() => setPendingAction({ kind: 'skip', rule })}
                           disabled={actioningId === rule.id}
                           className="btn-secondary flex-1 justify-center text-xs py-1.5 disabled:opacity-50"
                         >
                           Skip
                         </button>
                         <button
-                          onClick={() => handleConfirm(rule)}
+                          onClick={() => setPendingAction({ kind: 'confirm', rule })}
                           disabled={actioningId === rule.id}
                           className="btn-primary flex-1 justify-center text-xs py-1.5 disabled:opacity-50"
                         >
@@ -159,6 +209,14 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
             </>
           )}
         </div>
+
+        <button
+          onClick={() => setShowSearch(true)}
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          aria-label="Search transactions"
+        >
+          <HiOutlineSearch className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+        </button>
 
         <button
           onClick={toggleTheme}
@@ -201,6 +259,19 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
         )}
       </div>
     </header>
+
+    <ConfirmDialog
+      isOpen={pendingAction !== null}
+      title={pendingDialogCopy.title}
+      message={pendingDialogCopy.message}
+      confirmLabel={pendingAction?.kind === 'confirm' ? 'Add transaction' : 'Skip'}
+      onConfirm={handlePendingConfirm}
+      onCancel={() => setPendingAction(null)}
+      danger={pendingAction?.kind === 'skip'}
+    />
+
+    {showSearch && <GlobalSearchOverlay onClose={() => setShowSearch(false)} />}
+    </>
   );
 };
 
