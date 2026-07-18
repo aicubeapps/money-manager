@@ -28,6 +28,8 @@ declare global {
 
 interface TokenResponse {
   access_token?: string;
+  /** Seconds until expiry, per the GIS token response — typically ~3599 (1hr). */
+  expires_in?: number;
   error?: string;
 }
 
@@ -39,10 +41,30 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const CONNECTED_FLAG_KEY = 'driveBackupConnected';
 const GIS_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
+// Treat a token as expired this long before its real expiry, so a Drive call
+// that's about to be made doesn't race a token that dies mid-request.
+const EXPIRY_SAFETY_MARGIN_MS = 60_000;
+// Fallback when a token response omits expires_in (shouldn't normally happen).
+const DEFAULT_TOKEN_LIFETIME_SEC = 3600;
 
-let accessToken: string | null = null;
+interface TokenState {
+  value: string;
+  expiresAt: number; // epoch ms
+}
+
+// Module-level singleton — every importer (backupService, receiptService, ...)
+// shares this exact state via the same ES module instance, so a token
+// obtained for one feature is immediately usable by the other with no
+// separate re-auth. (Verified: not duplicated anywhere in this codebase.)
+let tokenState: TokenState | null = null;
 let tokenClient: TokenClient | null = null;
 let gisScriptPromise: Promise<void> | null = null;
+// Serializes concurrent requestToken() calls. GIS's token client instance
+// supports exactly one callback/error_callback pair at a time — a second
+// requestAccessToken() call before the first's callback fires overwrites
+// those handlers, so the first call's Promise would otherwise never
+// resolve (silently hanging rather than failing fast).
+let inFlightRequest: Promise<boolean> | null = null;
 
 const loadGisScript = (): Promise<void> => {
   if (gisScriptPromise) return gisScriptPromise;
@@ -81,34 +103,64 @@ const getTokenClient = async (): Promise<TokenClient> => {
     client_id: CLIENT_ID,
     scope: DRIVE_SCOPE,
     callback: () => {}, // overridden per-request below
+    error_callback: () => {}, // overridden per-request below
   });
   return tokenClient;
 };
 
-const requestToken = (prompt: string): Promise<boolean> =>
+const requestTokenUnserialized = (prompt: string): Promise<boolean> =>
   getTokenClient().then(
     (client) =>
       new Promise<boolean>((resolve) => {
-        // Re-wrap the client's callback per call since GIS only supports one
-        // callback per client instance, not per requestAccessToken() call.
+        let settled = false;
+        const finish = (ok: boolean) => {
+          if (settled) return;
+          settled = true;
+          resolve(ok);
+        };
+        // Re-wrap both handlers per call since GIS only supports one
+        // callback/error_callback pair per client instance, not per
+        // requestAccessToken() call.
         (client as unknown as { callback: (r: TokenResponse) => void }).callback = (response: TokenResponse) => {
           if (response.access_token) {
-            accessToken = response.access_token;
-            resolve(true);
+            const lifetimeSec = response.expires_in ?? DEFAULT_TOKEN_LIFETIME_SEC;
+            tokenState = { value: response.access_token, expiresAt: Date.now() + lifetimeSec * 1000 };
+            finish(true);
           } else {
-            resolve(false);
+            finish(false);
           }
+        };
+        // Without this, a silent (prompt: '') failure — e.g. no valid Google
+        // session, or the browser blocking the third-party-cookie-dependent
+        // silent-issuance mechanism GIS uses outside a user gesture — never
+        // calls `callback`, so the Promise above would hang forever instead
+        // of resolving false and letting the caller fall back to an explicit
+        // "Connect" button.
+        (client as unknown as { error_callback: (e: { type: string }) => void }).error_callback = () => {
+          finish(false);
         };
         try {
           client.requestAccessToken({ prompt });
         } catch {
-          resolve(false);
+          finish(false);
         }
       })
   ).catch(() => false);
 
+const requestToken = (prompt: string): Promise<boolean> => {
+  if (inFlightRequest) return inFlightRequest;
+  inFlightRequest = requestTokenUnserialized(prompt).finally(() => {
+    inFlightRequest = null;
+  });
+  return inFlightRequest;
+};
+
+const isTokenLive = (): boolean =>
+  tokenState !== null && Date.now() < tokenState.expiresAt - EXPIRY_SAFETY_MARGIN_MS;
+
 /** Explicit, user-initiated connect — call only from a "Connect Google Drive" click. */
 export const connectDrive = async (): Promise<boolean> => {
+  if (isTokenLive()) return true;
   const ok = await requestToken('consent');
   if (ok) localStorage.setItem(CONNECTED_FLAG_KEY, 'true');
   return ok;
@@ -116,21 +168,22 @@ export const connectDrive = async (): Promise<boolean> => {
 
 /** Silent re-acquisition for a user who connected in a previous session — no popup shown. */
 export const reconnectDriveSilently = async (): Promise<boolean> => {
+  if (isTokenLive()) return true;
   if (!hasConnectedBefore()) return false;
   return requestToken('');
 };
 
-/** True only if we currently hold a live access token in this tab. */
-export const isDriveConnected = (): boolean => accessToken !== null;
+/** True only if we currently hold a live, unexpired access token in this tab. */
+export const isDriveConnected = (): boolean => isTokenLive();
 
 /** True if the user has ever completed the explicit connect flow (persisted flag, not the token). */
 export const hasConnectedBefore = (): boolean => localStorage.getItem(CONNECTED_FLAG_KEY) === 'true';
 
 export const disconnectDrive = (): void => {
-  if (accessToken && window.google?.accounts?.oauth2) {
-    window.google.accounts.oauth2.revoke(accessToken, () => {});
+  if (tokenState && window.google?.accounts?.oauth2) {
+    window.google.accounts.oauth2.revoke(tokenState.value, () => {});
   }
-  accessToken = null;
+  tokenState = null;
   localStorage.removeItem(CONNECTED_FLAG_KEY);
 };
 
@@ -138,8 +191,8 @@ const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 
 const authHeader = (): HeadersInit => {
-  if (!accessToken) throw new Error('Not connected to Google Drive.');
-  return { Authorization: `Bearer ${accessToken}` };
+  if (!tokenState) throw new Error('Not connected to Google Drive.');
+  return { Authorization: `Bearer ${tokenState.value}` };
 };
 
 /** Wraps a Drive call, retrying once via silent re-auth on a 401 (expired token). */
@@ -247,7 +300,6 @@ export const uploadImageFile = async (file: File, folderId: string): Promise<Dri
 
 /** Downloads a file's raw bytes (for images — pair with URL.createObjectURL for display). */
 export const downloadFileBlob = async (fileId: string): Promise<Blob> => {
-  if (!accessToken) throw new Error('Not connected to Google Drive.');
   let res = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, { headers: authHeader() });
   if (res.status === 401) {
     const reauthed = await reconnectDriveSilently();
@@ -259,7 +311,6 @@ export const downloadFileBlob = async (fileId: string): Promise<Blob> => {
 };
 
 export const downloadFileContent = async (fileId: string): Promise<string> => {
-  if (!accessToken) throw new Error('Not connected to Google Drive.');
   let res = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, { headers: authHeader() });
   if (res.status === 401) {
     const reauthed = await reconnectDriveSilently();
