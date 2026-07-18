@@ -713,10 +713,16 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
             <button
               type="submit"
               onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || receiptUploading}
               className="btn-primary flex-1 justify-center disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : transaction ? 'Save changes' : 'Add transaction'}
+              {receiptUploading
+                ? 'Uploading receipt...'
+                : isSubmitting
+                  ? 'Saving...'
+                  : transaction
+                    ? 'Save changes'
+                    : 'Add transaction'}
             </button>
           </div>
         </div>
