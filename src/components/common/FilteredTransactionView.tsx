@@ -9,6 +9,9 @@ import { getAccountIcon, getAccountColor } from '../../utils/accountHelpers';
 import { calculateAccountBalance } from '../../utils/accountBalance';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import TransactionList from '../transactions/TransactionList';
+import TransactionForm from '../transactions/TransactionForm';
+import { updateTransaction } from '../../services/transactionService';
+import { toast } from './Toast';
 import LoadingSpinner from './LoadingSpinner';
 import EmptyState from './EmptyState';
 import type { Account, Tag, Transaction } from '../../types';
@@ -87,6 +90,29 @@ const FilteredTransactionView = ({ isOpen, title, filter, mode = 'transactions',
   // card-tap drill-down builds, run through the same matchesFilter/
   // TransactionList render path below (not a separate implementation).
   const [drilledAccount, setDrilledAccount] = useState<Account | null>(null);
+
+  // Tapping a transaction row (in either 'transactions' mode, or after
+  // drilling into an account from 'accounts' mode — both render the same
+  // TransactionList compact rows below) opens it for editing, reusing the
+  // exact same TransactionForm + updateTransaction flow TransactionsPage
+  // uses for its edit-pencil-button action, just triggered by a row tap
+  // instead. Doesn't touch the 'accounts'-mode account-row tap (that's a
+  // separate list/onClick, handled by setDrilledAccount above).
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const expenseCategories = categories.filter((c) => c.type === 'expense');
+  const incomeCategories = categories.filter((c) => c.type === 'income');
+
+  const handleSaveEdit = async (data: any) => {
+    if (!editingTransaction) return;
+    try {
+      await updateTransaction(editingTransaction.id, data);
+      toast.success('Transaction updated');
+      setEditingTransaction(null);
+    } catch (err) {
+      console.error('Error updating transaction:', err);
+      toast.error('Failed to update transaction');
+    }
+  };
 
   // Reset the inner drill-down whenever the outer modal is reopened with a
   // new filter/mode (e.g. tapping a different summary card). Adjusting state
@@ -212,10 +238,27 @@ const FilteredTransactionView = ({ isOpen, title, filter, mode = 'transactions',
           ) : filtered.length === 0 ? (
             <EmptyState icon="💸" title="No transactions" description="No transactions match this filter." />
           ) : (
-            <TransactionList transactions={filtered} accounts={accounts} categories={categories} compact />
+            <TransactionList
+              transactions={filtered}
+              accounts={accounts}
+              categories={categories}
+              compact
+              onEdit={setEditingTransaction}
+            />
           )}
         </div>
       </div>
+
+      {editingTransaction && (
+        <TransactionForm
+          accounts={accounts}
+          expenseCategories={expenseCategories}
+          incomeCategories={incomeCategories}
+          transaction={editingTransaction}
+          onSave={handleSaveEdit}
+          onCancel={() => setEditingTransaction(null)}
+        />
+      )}
     </div>
   );
 };

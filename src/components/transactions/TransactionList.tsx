@@ -30,20 +30,6 @@ const TYPE_STYLES: Record<string, { text: string; bg: string; label: string; pre
   transfer: { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Transfer', prefix: '↔' },
 };
 
-// Deliberate, category-colored icon chip (replaces the old faint red/green/
-// blue-tinted-by-transaction-type box, which read as an accidental wash
-// rather than a designed element). Falls back to the primary brand color
-// for transfers, which have no category.
-const FALLBACK_ICON_COLOR = '#6366f1';
-const hexToRgba = (hex: string, alpha: number) => {
-  const clean = hex.replace('#', '');
-  const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean;
-  const value = parseInt(full, 16);
-  if (Number.isNaN(value)) return `rgba(99, 102, 241, ${alpha})`;
-  const r = (value >> 16) & 255, g = (value >> 8) & 255, b = value & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
 const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete, onAdd, compact = false }: TransactionListProps) => {
   const formatCurrency = useFormatCurrency();
   const { currentUser } = useAuth();
@@ -222,18 +208,16 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
                   const style = TYPE_STYLES[transaction.type];
                   const cat = getCategoryName(transaction.categoryId);
 
-                  const iconColor = cat?.color || FALLBACK_ICON_COLOR;
-
                   return (
                     <div
                       key={transaction.id}
-                      className="card p-3 flex items-center gap-3 hover:shadow-md transition-all duration-150 group"
+                      onClick={compact ? () => onEdit?.(transaction) : undefined}
+                      role={compact ? 'button' : undefined}
+                      tabIndex={compact ? 0 : undefined}
+                      className={`card p-3 flex items-center gap-3 hover:shadow-md transition-all duration-150 group ${compact ? 'cursor-pointer' : ''}`}
                     >
-                      {/* Category icon — deliberately colored by category, not a generic tinted box */}
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-lg"
-                        style={{ backgroundColor: hexToRgba(iconColor, 0.16) }}
-                      >
+                      {/* Category icon — rendered plainly, no background chip */}
+                      <div className="w-11 h-11 flex items-center justify-center flex-shrink-0 text-2xl">
                         {cat?.icon || style.prefix}
                       </div>
 

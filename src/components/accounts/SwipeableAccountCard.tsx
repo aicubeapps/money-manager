@@ -34,17 +34,20 @@ const SwipeableAccountCard = ({
   onSwipeRightQuickAdd,
   onLongPress,
 }: SwipeableAccountCardProps) => {
+  // translateX (React state) only drives the *settled* position — panel
+  // open (-ACTION_PANEL_WIDTH) or closed (0) — once a gesture ends. It is
+  // intentionally NOT written on every touchmove: a state update only
+  // reaches the DOM on React's next render pass, and at touchmove frequency
+  // that meant the state was updating (confirmed via the debug overlay
+  // reading it) while the actual `transform` on the element lagged behind
+  // or never visibly caught up. The live drag position is instead painted
+  // directly via dragXRef + applyTransform() below, bypassing React
+  // entirely for the 60fps-sensitive part.
   const [translateX, setTranslateX] = useState(0);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [dragging, setDragging] = useState(false);
-
-  // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
-  const [debugTouchStarted, setDebugTouchStarted] = useState(false);
-  const [debugMoveCount, setDebugMoveCount] = useState(0);
-  const [debugListenerAttached, setDebugListenerAttached] = useState(false);
-  // END TEMP DEBUG
 
   const cardRef = useRef<HTMLDivElement>(null);
+  const dragXRef = useRef(0);
   const startX = useRef(0);
   const startY = useRef(0);
   const didDrag = useRef(false);
@@ -56,12 +59,16 @@ const SwipeableAccountCard = ({
   // to suppress it after any gesture touchend already handled (drag, swipe,
   // long-press, or closing an open panel) so onTap doesn't also fire.
   const suppressNextClick = useRef(false);
-  // Mirrors of state that the native (non-React) touch listeners below need
+  // Mirror of state that the native (non-React) touch listeners below need
   // to read without re-subscribing on every render.
   const panelOpenRef = useRef(panelOpen);
-  const translateXRef = useRef(translateX);
   panelOpenRef.current = panelOpen;
-  translateXRef.current = translateX;
+
+  const applyTransform = (x: number) => {
+    if (cardRef.current) {
+      cardRef.current.style.transform = `translateX(${x}px)`;
+    }
+  };
 
   const clearLongPressTimer = () => {
     if (longPressTimer.current) {
@@ -95,9 +102,10 @@ const SwipeableAccountCard = ({
       startY.current = e.touches[0].clientY;
       didDrag.current = false;
       longPressFired.current = false;
-      setDragging(true);
-      setDebugTouchStarted(true); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
-      setDebugMoveCount(0); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
+      dragXRef.current = panelOpenRef.current ? -ACTION_PANEL_WIDTH : 0;
+      // Kill the settle transition immediately so the very first live-drag
+      // frame doesn't animate/lag behind the finger.
+      if (cardRef.current) cardRef.current.style.transition = 'none';
 
       longPressTimer.current = setTimeout(() => {
         longPressFired.current = true;
@@ -107,7 +115,6 @@ const SwipeableAccountCard = ({
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      setDebugMoveCount((n) => n + 1); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
       const dx = e.touches[0].clientX - startX.current;
       const dy = e.touches[0].clientY - startY.current;
 
@@ -125,13 +132,21 @@ const SwipeableAccountCard = ({
         // Clamp: don't reveal the action panel further than its width, and
         // don't drag right past a small overshoot (right-swipe is a direct
         // trigger, not a reveal, so it doesn't need to travel far).
-        setTranslateX(Math.max(-ACTION_PANEL_WIDTH, Math.min(ACTION_PANEL_WIDTH, next)));
+        const clamped = Math.max(-ACTION_PANEL_WIDTH, Math.min(ACTION_PANEL_WIDTH, next));
+        dragXRef.current = clamped;
+        // Paint directly on the DOM node — a React state update here only
+        // reaches the element on React's next render, which at touchmove
+        // frequency is what made the drag invisible despite the tracked
+        // value changing correctly.
+        applyTransform(clamped);
       }
     };
 
     const onTouchEnd = () => {
       clearLongPressTimer();
-      setDragging(false);
+      // Hand the element back to React's controlled style (settle
+      // animation) for the discrete post-gesture snap.
+      if (cardRef.current) cardRef.current.style.transition = 'transform 200ms ease-out';
 
       if (longPressFired.current) {
         // Long-press already handled the gesture; snap back visually, suppress
@@ -155,11 +170,11 @@ const SwipeableAccountCard = ({
       }
 
       suppressNextClick.current = true;
-      if (translateXRef.current <= -SWIPE_COMMIT_THRESHOLD) {
+      if (dragXRef.current <= -SWIPE_COMMIT_THRESHOLD) {
         vibrate(15);
         setPanelOpen(true);
         setTranslateX(-ACTION_PANEL_WIDTH);
-      } else if (translateXRef.current >= SWIPE_COMMIT_THRESHOLD && !panelOpenRef.current) {
+      } else if (dragXRef.current >= SWIPE_COMMIT_THRESHOLD && !panelOpenRef.current) {
         vibrate(15);
         setTranslateX(0);
         onSwipeRightQuickAdd();
@@ -172,14 +187,12 @@ const SwipeableAccountCard = ({
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
-    setDebugListenerAttached(true); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
 
     return () => {
       clearLongPressTimer();
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
-      setDebugListenerAttached(false); // TEMP DEBUG — REMOVE BEFORE FINAL COMMIT
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onLongPress, onSwipeRightQuickAdd]);
@@ -208,19 +221,11 @@ const SwipeableAccountCard = ({
         tabIndex={0}
         style={{
           transform: `translateX(${translateX}px)`,
-          transition: dragging ? 'none' : 'transform 200ms ease-out',
+          transition: 'transform 200ms ease-out',
           touchAction: 'pan-y',
         }}
       >
         {children}
-
-        {/* TEMP DEBUG — REMOVE BEFORE FINAL COMMIT */}
-        <div
-          className="absolute top-1 right-1 z-10 pointer-events-none rounded bg-black/70 px-1.5 py-0.5 text-[9px] leading-tight font-mono text-lime-300"
-        >
-          att:{debugListenerAttached ? 'Y' : 'N'} ts:{debugTouchStarted ? 'Y' : 'N'} mv:{debugMoveCount} tx:{Math.round(translateX)}
-        </div>
-        {/* END TEMP DEBUG */}
       </div>
     </div>
   );
