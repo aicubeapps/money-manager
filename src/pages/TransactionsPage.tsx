@@ -96,6 +96,13 @@ const TransactionsPage = () => {
             accountId: transactionData.accountId,
             categoryId: transactionData.categoryId || '',
             description: transactionData.notes || '',
+            // Transfers have no category but do need both accounts captured —
+            // TransactionForm sets accountId to fromAccountId for transfers,
+            // but the destination account only lives in toAccountId, which
+            // was previously dropped here entirely.
+            ...(transactionData.type === 'transfer'
+              ? { fromAccountId: transactionData.fromAccountId, toAccountId: transactionData.toAccountId }
+              : {}),
             ...(transactionData.tags && transactionData.tags.length > 0
               ? { tags: transactionData.tags }
               : {}),

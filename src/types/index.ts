@@ -131,10 +131,14 @@ export interface RecurringRule {
   templateTransaction: {
     type: TransactionType;
     amount: number;
+    /** For expense/income: the account. For transfer: same as fromAccountId. */
     accountId: string;
     categoryId: string;
     description: string;
     tags?: string[];
+    /** Only set (both) when type === 'transfer'. */
+    fromAccountId?: string;
+    toAccountId?: string;
   };
   frequency: RecurringFrequency;
   dayOfMonth?: number;
