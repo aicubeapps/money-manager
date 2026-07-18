@@ -1,19 +1,29 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrency } from '../context/CurrencyContext';
-import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiOutlineCurrencyDollar, HiChevronRight } from 'react-icons/hi';
+import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiOutlineCurrencyDollar, HiChevronRight, HiOutlineCloudUpload, HiOutlineCloud } from 'react-icons/hi';
 import RecurringRulesList from '../components/settings/RecurringRulesList';
 import { FIAT_CURRENCIES, CRYPTO_CURRENCIES } from '../services/currencyService';
+import { connectDrive, disconnectDrive, isDriveConnected, hasConnectedBefore, reconnectDriveSilently } from '../services/googleDriveService';
+import { uploadBackup, listBackups, previewBackup, restoreFromBackup, getLastBackupAt, type BackupSummary, type RestorePreview } from '../services/backupService';
+import { toast } from '../components/common/Toast';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const formatLastUpdated = (timestamp: number | null) => {
   if (!timestamp) return 'Never';
   return new Date(timestamp).toLocaleString();
 };
 
+const formatBackupDate = (date: Date | null) => {
+  if (!date) return 'Never';
+  return date.toLocaleString();
+};
+
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
-  const { userData, logout } = useAuth();
+  const { userData, currentUser, logout } = useAuth();
   const {
     enabled: currencyEnabled,
     setEnabled: setCurrencyEnabled,
@@ -24,6 +34,107 @@ const SettingsPage = () => {
     error: ratesError,
     refresh: refreshRates,
   } = useCurrency();
+
+  const [driveStatus, setDriveStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [backups, setBackups] = useState<BackupSummary[]>([]);
+  const [backupsLoading, setBackupsLoading] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [lastBackupAt, setLastBackupAt] = useState<Date | null>(getLastBackupAt());
+  const [restoreTarget, setRestoreTarget] = useState<{ file: BackupSummary; preview: RestorePreview } | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      if (isDriveConnected()) {
+        if (!cancelled) setDriveStatus('connected');
+        return;
+      }
+      if (hasConnectedBefore()) {
+        const ok = await reconnectDriveSilently();
+        if (!cancelled) setDriveStatus(ok ? 'connected' : 'disconnected');
+        return;
+      }
+      if (!cancelled) setDriveStatus('disconnected');
+    };
+    init();
+    return () => { cancelled = true; };
+  }, []);
+
+  const refreshBackups = async () => {
+    setBackupsLoading(true);
+    try {
+      const list = await listBackups();
+      setBackups(list);
+    } catch (err) {
+      console.error('Error listing backups:', err);
+      toast.error('Failed to load backup list');
+    } finally {
+      setBackupsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (driveStatus === 'connected') refreshBackups();
+  }, [driveStatus]);
+
+  const handleConnectDrive = async () => {
+    const ok = await connectDrive();
+    if (ok) {
+      setDriveStatus('connected');
+      toast.success('Google Drive connected');
+    } else {
+      toast.error('Could not connect to Google Drive');
+    }
+  };
+
+  const handleDisconnectDrive = () => {
+    disconnectDrive();
+    setDriveStatus('disconnected');
+    setBackups([]);
+  };
+
+  const handleBackupNow = async () => {
+    if (!currentUser) return;
+    setBackingUp(true);
+    try {
+      await uploadBackup(currentUser.uid);
+      setLastBackupAt(getLastBackupAt());
+      toast.success('Backup uploaded to Google Drive');
+      await refreshBackups();
+    } catch (err) {
+      console.error('Error uploading backup:', err);
+      toast.error('Backup failed — please try again');
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const handleRestoreClick = async (file: BackupSummary) => {
+    try {
+      const preview = await previewBackup(file.fileId);
+      setRestoreTarget({ file, preview });
+    } catch (err) {
+      console.error('Error reading backup:', err);
+      toast.error('Failed to read that backup file');
+    }
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoreTarget || !currentUser) return;
+    setRestoring(true);
+    try {
+      await restoreFromBackup(currentUser.uid, restoreTarget.preview.payload);
+      toast.success('Backup restored — reloading app...');
+      setRestoreTarget(null);
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      console.error('Error restoring backup:', err);
+      toast.error('Restore failed — your existing data may be partially affected');
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-2xl animate-fade-in">
@@ -184,6 +295,90 @@ const SettingsPage = () => {
         <RecurringRulesList />
       </div>
 
+      {/* Backup */}
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-2">
+          <HiOutlineCloud className="w-4 h-4" /> Backup
+        </h2>
+
+        {driveStatus === 'checking' ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400">Checking Google Drive connection...</div>
+        ) : driveStatus === 'disconnected' ? (
+          <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Connect Google Drive to back up your accounts, transactions, categories, budgets, and tags.
+            </p>
+            <button onClick={handleConnectDrive} className="btn-primary text-sm">
+              <HiOutlineCloud className="w-4 h-4" /> Connect Google Drive
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Connected</span>
+              </div>
+              <button
+                onClick={handleDisconnectDrive}
+                className="text-xs text-gray-500 hover:text-red-600 dark:hover:text-red-400 underline"
+              >
+                Disconnect
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">
+                Last backup: {formatBackupDate(lastBackupAt)}
+              </span>
+              <button
+                onClick={handleBackupNow}
+                disabled={backingUp}
+                className="btn-secondary text-xs py-1.5 px-3 disabled:opacity-50"
+              >
+                <HiOutlineCloudUpload className={`w-3.5 h-3.5 ${backingUp ? 'animate-pulse' : ''}`} />
+                {backingUp ? 'Backing up...' : 'Back up now'}
+              </button>
+            </div>
+
+            <div>
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                Available backups
+              </div>
+              {backupsLoading ? (
+                <div className="text-sm text-gray-400">Loading...</div>
+              ) : backups.length === 0 ? (
+                <div className="text-sm text-gray-400">No backups yet.</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {backups.map((file) => (
+                    <div
+                      key={file.fileId}
+                      className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-700/40 text-sm"
+                    >
+                      <span className="text-gray-700 dark:text-gray-200 truncate pr-2">
+                        {new Date(file.createdAt).toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => handleRestoreClick(file)}
+                        className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex-shrink-0"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Automated backups only run when the app is opened, and only if 7+ days have
+              passed since the last one — this is not a true background process.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Security */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-2">
@@ -228,6 +423,24 @@ const SettingsPage = () => {
       <div className="text-xs text-gray-400 dark:text-gray-600 text-center pb-4">
         ExpenseTracker v1.0 · Built with React & Firebase
       </div>
+
+      <ConfirmDialog
+        isOpen={restoreTarget !== null}
+        title="Restore from backup?"
+        message={
+          restoreTarget
+            ? `This will permanently delete your current data and replace it with the backup from ${new Date(restoreTarget.file.createdAt).toLocaleString()}: ${restoreTarget.preview.counts.accounts} accounts, ${restoreTarget.preview.counts.transactions} transactions, ${restoreTarget.preview.counts.categories} categories, ${restoreTarget.preview.counts.budgets} budgets, ${restoreTarget.preview.counts.tags} tags.` +
+              (restoreTarget.preview.schemaMismatch
+                ? ' Warning: this backup was made with a different app version (schema mismatch) — restoring it is not guaranteed to work correctly, automatic migration is not supported.'
+                : '') +
+              ' This cannot be undone.'
+            : ''
+        }
+        confirmLabel={restoring ? 'Restoring...' : 'Restore'}
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setRestoreTarget(null)}
+        danger
+      />
     </div>
   );
 };
