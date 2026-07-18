@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, useEffect, type ReactNode } from 'react';
 import { HiPencil, HiTrash } from 'react-icons/hi';
 
 // Distance (px) a horizontal drag must cross to commit as a swipe action.
@@ -38,6 +38,7 @@ const SwipeableAccountCard = ({
   const [panelOpen, setPanelOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
 
+  const cardRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
   const startY = useRef(0);
   const didDrag = useRef(false);
@@ -49,87 +50,17 @@ const SwipeableAccountCard = ({
   // to suppress it after any gesture touchend already handled (drag, swipe,
   // long-press, or closing an open panel) so onTap doesn't also fire.
   const suppressNextClick = useRef(false);
+  // Mirrors of state that the native (non-React) touch listeners below need
+  // to read without re-subscribing on every render.
+  const panelOpenRef = useRef(panelOpen);
+  const translateXRef = useRef(translateX);
+  panelOpenRef.current = panelOpen;
+  translateXRef.current = translateX;
 
   const clearLongPressTimer = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    startY.current = e.touches[0].clientY;
-    didDrag.current = false;
-    longPressFired.current = false;
-    setDragging(true);
-
-    longPressTimer.current = setTimeout(() => {
-      longPressFired.current = true;
-      vibrate(20);
-      onLongPress();
-    }, LONG_PRESS_MS);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const dx = e.touches[0].clientX - startX.current;
-    const dy = e.touches[0].clientY - startY.current;
-
-    if (!didDrag.current && (Math.abs(dx) > MOVE_CANCEL_THRESHOLD || Math.abs(dy) > MOVE_CANCEL_THRESHOLD)) {
-      didDrag.current = true;
-      clearLongPressTimer();
-    }
-
-    // Once it's clearly a horizontal drag (not a vertical scroll), track it
-    // and prevent the page from scrolling while dragging the card.
-    if (didDrag.current && Math.abs(dx) > Math.abs(dy)) {
-      e.preventDefault();
-      const base = panelOpen ? -ACTION_PANEL_WIDTH : 0;
-      const next = base + dx;
-      // Clamp: don't reveal the action panel further than its width, and
-      // don't drag right past a small overshoot (right-swipe is a direct
-      // trigger, not a reveal, so it doesn't need to travel far).
-      setTranslateX(Math.max(-ACTION_PANEL_WIDTH, Math.min(ACTION_PANEL_WIDTH, next)));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    clearLongPressTimer();
-    setDragging(false);
-
-    if (longPressFired.current) {
-      // Long-press already handled the gesture; snap back visually, suppress
-      // the upcoming synthetic click, and stop.
-      suppressNextClick.current = true;
-      setTranslateX(panelOpen ? -ACTION_PANEL_WIDTH : 0);
-      return;
-    }
-
-    if (!didDrag.current) {
-      // A real tap. If the action panel is open, close it instead of
-      // drilling down — suppress the synthetic click that would otherwise
-      // fire onTap. Otherwise let the synthetic click fall through to
-      // onClick={onTap} below, same path as a desktop mouse click.
-      if (panelOpen) {
-        suppressNextClick.current = true;
-        setPanelOpen(false);
-        setTranslateX(0);
-      }
-      return;
-    }
-
-    suppressNextClick.current = true;
-    if (translateX <= -SWIPE_COMMIT_THRESHOLD) {
-      vibrate(15);
-      setPanelOpen(true);
-      setTranslateX(-ACTION_PANEL_WIDTH);
-    } else if (translateX >= SWIPE_COMMIT_THRESHOLD && !panelOpen) {
-      vibrate(15);
-      setTranslateX(0);
-      onSwipeRightQuickAdd();
-    } else {
-      setPanelOpen(false);
-      setTranslateX(0);
     }
   };
 
@@ -140,6 +71,107 @@ const SwipeableAccountCard = ({
     }
     onTap();
   };
+
+  // React attaches its synthetic onTouchMove listener as passive, so
+  // calling preventDefault() from a JSX handler silently fails to stop the
+  // browser's own horizontal pan/scroll gesture from competing with (and,
+  // on several mobile browsers, winning over) our transform-based drag —
+  // touch-action: pan-y alone isn't consistently honored enough on its own
+  // once nested inside a vertically-scrolling ancestor. Attaching the
+  // listeners natively with { passive: false } makes preventDefault actually
+  // work, which is what let the card visually track the finger at all.
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startX.current = e.touches[0].clientX;
+      startY.current = e.touches[0].clientY;
+      didDrag.current = false;
+      longPressFired.current = false;
+      setDragging(true);
+
+      longPressTimer.current = setTimeout(() => {
+        longPressFired.current = true;
+        vibrate(20);
+        onLongPress();
+      }, LONG_PRESS_MS);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const dx = e.touches[0].clientX - startX.current;
+      const dy = e.touches[0].clientY - startY.current;
+
+      if (!didDrag.current && (Math.abs(dx) > MOVE_CANCEL_THRESHOLD || Math.abs(dy) > MOVE_CANCEL_THRESHOLD)) {
+        didDrag.current = true;
+        clearLongPressTimer();
+      }
+
+      // Once it's clearly a horizontal drag (not a vertical scroll), track it
+      // and prevent the page from scrolling while dragging the card.
+      if (didDrag.current && Math.abs(dx) > Math.abs(dy)) {
+        e.preventDefault();
+        const base = panelOpenRef.current ? -ACTION_PANEL_WIDTH : 0;
+        const next = base + dx;
+        // Clamp: don't reveal the action panel further than its width, and
+        // don't drag right past a small overshoot (right-swipe is a direct
+        // trigger, not a reveal, so it doesn't need to travel far).
+        setTranslateX(Math.max(-ACTION_PANEL_WIDTH, Math.min(ACTION_PANEL_WIDTH, next)));
+      }
+    };
+
+    const onTouchEnd = () => {
+      clearLongPressTimer();
+      setDragging(false);
+
+      if (longPressFired.current) {
+        // Long-press already handled the gesture; snap back visually, suppress
+        // the upcoming synthetic click, and stop.
+        suppressNextClick.current = true;
+        setTranslateX(panelOpenRef.current ? -ACTION_PANEL_WIDTH : 0);
+        return;
+      }
+
+      if (!didDrag.current) {
+        // A real tap. If the action panel is open, close it instead of
+        // drilling down — suppress the synthetic click that would otherwise
+        // fire onTap. Otherwise let the synthetic click fall through to
+        // onClick={onTap} below, same path as a desktop mouse click.
+        if (panelOpenRef.current) {
+          suppressNextClick.current = true;
+          setPanelOpen(false);
+          setTranslateX(0);
+        }
+        return;
+      }
+
+      suppressNextClick.current = true;
+      if (translateXRef.current <= -SWIPE_COMMIT_THRESHOLD) {
+        vibrate(15);
+        setPanelOpen(true);
+        setTranslateX(-ACTION_PANEL_WIDTH);
+      } else if (translateXRef.current >= SWIPE_COMMIT_THRESHOLD && !panelOpenRef.current) {
+        vibrate(15);
+        setTranslateX(0);
+        onSwipeRightQuickAdd();
+      } else {
+        setPanelOpen(false);
+        setTranslateX(0);
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      clearLongPressTimer();
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onLongPress, onSwipeRightQuickAdd]);
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
@@ -159,9 +191,7 @@ const SwipeableAccountCard = ({
       </div>
 
       <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        ref={cardRef}
         onClick={handleClick}
         role="button"
         tabIndex={0}
