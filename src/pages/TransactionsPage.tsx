@@ -87,7 +87,8 @@ const TransactionsPage = () => {
         const nextDueDate = calculateNextDueDate(
           recurringRule.startDate,
           recurringRule.frequency,
-          recurringRule.dayOfMonth
+          recurringRule.dayOfMonth,
+          recurringRule.dayOfWeek
         );
         await createRecurringRule(currentUser.uid, {
           templateTransaction: {
@@ -109,6 +110,7 @@ const TransactionsPage = () => {
           },
           frequency: recurringRule.frequency,
           dayOfMonth: recurringRule.dayOfMonth,
+          dayOfWeek: recurringRule.dayOfWeek,
           startDate: recurringRule.startDate,
           nextDueDate,
         });

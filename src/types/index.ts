@@ -142,6 +142,9 @@ export interface RecurringRule {
   };
   frequency: RecurringFrequency;
   dayOfMonth?: number;
+  /** 0-6, Sunday-Saturday (matches date-fns/native Date.getDay(), not the
+   * ISO week where Monday=1). Only meaningful when frequency === 'weekly'. */
+  dayOfWeek?: number;
   startDate: string;
   nextDueDate: string;
   lastCreatedDate?: string;

@@ -17,6 +17,7 @@ type RecurringRuleCreateInput = {
   templateTransaction: RecurringRule['templateTransaction'];
   frequency: RecurringFrequency;
   dayOfMonth?: number;
+  dayOfWeek?: number;
   startDate: string;
   nextDueDate: string;
   isActive?: boolean;
