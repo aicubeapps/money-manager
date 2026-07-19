@@ -8,6 +8,7 @@ import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
 import ReceiptViewerModal from '../common/ReceiptViewerModal';
 import { format } from 'date-fns';
+import { useTheme } from '../../hooks/useTheme';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -35,6 +36,7 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
   const formatCurrency = useFormatCurrency();
   const { currentUser } = useAuth();
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const { theme } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -88,6 +90,149 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
 
   const totalIncome = useMemo(() => filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0), [filtered]);
   const totalExpense = useMemo(() => filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0), [filtered]);
+
+  {/* CYBERPUNK THEME */}
+  if (theme === 'cyberpunk') {
+    const cpFont: React.CSSProperties = { fontFamily: "'Courier New', Courier, monospace" };
+    const cpFilterBtnStyle = (active: boolean): React.CSSProperties => ({
+      background: '#000000',
+      border: active ? '1px solid #FF00FF' : '1px solid rgba(0,255,65,0.3)',
+      color: active ? '#FF00FF' : '#00CC33',
+      padding: '3px 12px',
+      fontSize: '11px',
+      letterSpacing: '0.06em',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+    });
+
+    return (
+      <div style={{ ...cpFont, color: '#00FF41' }} className="space-y-4 animate-fade-in">
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '18px', letterSpacing: '0.08em' }}>[TRANSACTIONS]</div>
+            <div style={{ fontSize: '11px', color: '#008F11', letterSpacing: '0.06em' }}>
+              RECORD_COUNT: {filtered.length}
+            </div>
+          </div>
+          <button onClick={onAdd} className="btn-primary text-sm">+ ADD_TXNS</button>
+        </div>
+
+        {/* Summary strip */}
+        {filtered.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.2)', padding: '10px' }}>
+              <div style={{ color: '#008F11', fontSize: '9px', letterSpacing: '0.08em' }}>TOTAL_INCOME</div>
+              <div style={{ color: '#00FF41', fontSize: '14px', fontWeight: 'bold' }}>{formatCurrency(totalIncome)}</div>
+            </div>
+            <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.2)', padding: '10px' }}>
+              <div style={{ color: '#008F11', fontSize: '9px', letterSpacing: '0.08em' }}>TOTAL_EXPENSE</div>
+              <div style={{ color: '#FF0040', fontSize: '14px', fontWeight: 'bold' }}>{formatCurrency(totalExpense)}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div style={{ border: '1px solid rgba(0,255,65,0.2)', padding: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {TYPE_FILTERS.map((type) => (
+              <button key={type} onClick={() => setFilterType(type)} style={cpFilterBtnStyle(filterType === type)}>
+                {type.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div style={{ position: 'relative', flex: 1, minWidth: '160px' }}>
+            <input
+              type="text"
+              placeholder="SEARCH..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-input"
+              style={{ paddingLeft: '10px', fontSize: '11px', letterSpacing: '0.06em' }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="form-input" style={{ width: '130px', fontSize: '11px' }} />
+            <span style={{ color: '#008F11', fontSize: '10px' }}>TO</span>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="form-input" style={{ width: '130px', fontSize: '11px' }} />
+            {(dateFrom || dateTo) && (
+              <button onClick={() => { setDateFrom(''); setDateTo(''); }} style={{ ...cpFilterBtnStyle(false), fontSize: '10px' }}>CLR</button>
+            )}
+          </div>
+        </div>
+
+        {/* Transaction log */}
+        {grouped.length === 0 ? (
+          <div style={{ color: '#008F11', padding: '24px', textAlign: 'center', border: '1px solid rgba(0,255,65,0.2)' }}>
+            NO_RECORDS_FOUND // ADJUST_FILTERS
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {grouped.map(([dateKey, txns]) => (
+              <div key={dateKey}>
+                <div style={{ color: '#008F11', fontSize: '11px', letterSpacing: '0.08em', padding: '4px 0', borderBottom: '1px solid rgba(0,255,65,0.2)', marginBottom: '4px' }}>
+                  // {format(new Date(dateKey), 'EEE, d MMM yyyy').toUpperCase()} — {txns.length} RECORD{txns.length !== 1 ? 'S' : ''}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {txns.map((transaction) => {
+                    const cat = getCategoryName(transaction.categoryId);
+                    const catLabel = (cat?.name || transaction.type).toUpperCase().replace(/\s+/g, '_');
+                    const merchant = (transaction.notes || catLabel).toUpperCase().replace(/\s+/g, '_').substring(0, 24);
+                    const timeStr = format(new Date(transaction.date), 'HH:mm');
+                    const amtColor = transaction.type === 'income' ? '#00FF41'
+                      : transaction.type === 'expense' ? '#FF0040'
+                      : '#00FFFF';
+                    const prefix = transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : '~';
+
+                    return (
+                      <div
+                        key={transaction.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 10px',
+                          borderLeft: `2px solid ${amtColor}40`,
+                          background: 'rgba(0,255,65,0.02)',
+                          gap: '8px',
+                        }}
+                        className="group"
+                      >
+                        <span style={{ color: '#008F11', fontSize: '11px', flexShrink: 0 }}>{timeStr}</span>
+                        <span style={{ color: '#00CC33', fontSize: '12px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          // {merchant}
+                        </span>
+                        <span style={{ color: amtColor, fontSize: '13px', fontWeight: 'bold', flexShrink: 0 }}>
+                          {prefix}{formatCurrency(transaction.amount)}
+                        </span>
+                        <span style={{ color: '#FF00FF', fontSize: '10px', border: '1px solid rgba(255,0,255,0.3)', padding: '0 4px', flexShrink: 0 }}>
+                          [{catLabel.substring(0, 10)}]
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px', opacity: 0, flexShrink: 0 }} className="group-hover:opacity-100 transition-opacity">
+                          {onEdit && <button onClick={() => onEdit(transaction)} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,0.3)', color: '#00CC33', padding: '1px 5px', fontSize: '9px', cursor: 'pointer', fontFamily: 'inherit' }}>EDIT</button>}
+                          {onDelete && <button onClick={() => setDeleteTarget(transaction.id)} style={{ background: 'transparent', border: '1px solid rgba(255,0,64,0.3)', color: '#FF0040', padding: '1px 5px', fontSize: '9px', cursor: 'pointer', fontFamily: 'inherit' }}>DEL</button>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <ConfirmDialog
+          isOpen={deleteTarget !== null}
+          title="Delete transaction"
+          message="This action cannot be undone. The transaction will be permanently removed."
+          confirmLabel="Delete"
+          onConfirm={() => { if (deleteTarget && onDelete) onDelete(deleteTarget); }}
+          onCancel={() => setDeleteTarget(null)}
+          danger
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">

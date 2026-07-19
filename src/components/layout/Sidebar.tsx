@@ -10,15 +10,16 @@ import {
   HiOutlineX,
 } from 'react-icons/hi';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: HiOutlineHome },
-  { to: '/accounts', label: 'Accounts', icon: HiOutlineCreditCard },
-  { to: '/transactions', label: 'Transactions', icon: HiOutlineCurrencyRupee },
-  { to: '/categories', label: 'Categories', icon: HiOutlineTag },
-  { to: '/budgets', label: 'Budgets', icon: HiOutlineCollection },
-  { to: '/reports', label: 'Reports', icon: HiOutlineChartPie },
-  { to: '/settings', label: 'Settings', icon: HiOutlineCog },
+  { to: '/', label: 'Dashboard', icon: HiOutlineHome, cmd: 'HOME' },
+  { to: '/accounts', label: 'Accounts', icon: HiOutlineCreditCard, cmd: 'ACCOUNTS' },
+  { to: '/transactions', label: 'Transactions', icon: HiOutlineCurrencyRupee, cmd: 'TXNS' },
+  { to: '/categories', label: 'Categories', icon: HiOutlineTag, cmd: 'CATEGORIES' },
+  { to: '/budgets', label: 'Budgets', icon: HiOutlineCollection, cmd: 'BUDGETS' },
+  { to: '/reports', label: 'Reports', icon: HiOutlineChartPie, cmd: 'REPORTS' },
+  { to: '/settings', label: 'Settings', icon: HiOutlineCog, cmd: 'SETTINGS' },
 ];
 
 interface SidebarProps {
@@ -28,6 +29,93 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { userData } = useAuth();
+  const { theme } = useTheme();
+
+  {/* CYBERPUNK THEME */}
+  if (theme === 'cyberpunk') {
+    return (
+      <>
+        {isOpen && (
+          <div
+            className="fixed inset-0 z-40 lg:hidden"
+            style={{ background: 'rgba(0,0,0,0.8)' }}
+            onClick={onClose}
+          />
+        )}
+        <aside
+          style={{
+            background: '#000000',
+            borderRight: '1px solid rgba(0,255,65,0.3)',
+            fontFamily: "'Courier New', Courier, monospace",
+            width: '224px',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            height: '100%',
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'column',
+            transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.3s ease',
+          }}
+          className="lg:translate-x-0 lg:static lg:w-56 lg:min-h-screen"
+        >
+          {/* Logo */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(0,255,65,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ color: '#00FF41', fontSize: '13px', letterSpacing: '0.08em' }}>
+              &gt; EXPENSE_TRACKER
+            </span>
+            <button
+              onClick={onClose}
+              className="lg:hidden"
+              style={{ background: 'transparent', border: 'none', color: '#008F11', cursor: 'pointer', fontSize: '16px' }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* User info */}
+          {userData && (
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid rgba(0,255,65,0.15)', color: '#00CC33', fontSize: '11px', letterSpacing: '0.06em' }}>
+              <div style={{ color: '#00FF41' }}>USER: {userData.displayName?.toUpperCase() || 'UNKNOWN'}</div>
+              <div style={{ color: '#008F11', marginTop: '2px' }}>{userData.email}</div>
+            </div>
+          )}
+
+          {/* Nav */}
+          <nav style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
+            {navItems.map(({ to, cmd }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/'}
+                onClick={onClose}
+                style={({ isActive }) => ({
+                  display: 'block',
+                  padding: '8px 10px',
+                  color: isActive ? '#FF00FF' : '#00CC33',
+                  fontSize: '13px',
+                  letterSpacing: '0.06em',
+                  textDecoration: 'none',
+                  borderLeft: isActive ? '2px solid #FF00FF' : '2px solid transparent',
+                  background: isActive ? 'rgba(255,0,255,0.08)' : 'transparent',
+                  marginBottom: '2px',
+                })}
+              >
+                {({ isActive }) => (
+                  <span>{isActive ? '>> ' : '> '}{cmd}{isActive ? ' [ACTIVE]' : ''}</span>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(0,255,65,0.15)', color: '#008F11', fontSize: '10px', letterSpacing: '0.06em', textAlign: 'center' }}>
+            v1.0 // EXPENSE_TRACKER
+          </div>
+        </aside>
+      </>
+    );
+  }
 
   return (
     <>

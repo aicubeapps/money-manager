@@ -10,18 +10,19 @@ import {
   HiTag,
   HiCog,
 } from 'react-icons/hi';
+import { useTheme } from '../../hooks/useTheme';
 
 const mainNavItems = [
-  { to: '/', label: 'Home', icon: HiHome },
-  { to: '/accounts', label: 'Accounts', icon: HiCreditCard },
-  { to: '/transactions', label: 'Txns', icon: HiCurrencyRupee },
-  { to: '/budgets', label: 'Budgets', icon: HiCollection },
-  { to: '/reports', label: 'Reports', icon: HiChartPie },
+  { to: '/', label: 'Home', cmd: 'HOME', icon: HiHome },
+  { to: '/accounts', label: 'Accounts', cmd: 'ACCOUNTS', icon: HiCreditCard },
+  { to: '/transactions', label: 'Txns', cmd: 'TXNS', icon: HiCurrencyRupee },
+  { to: '/budgets', label: 'Budgets', cmd: 'BUDGETS', icon: HiCollection },
+  { to: '/reports', label: 'Reports', cmd: 'REPORTS', icon: HiChartPie },
 ];
 
 const moreNavItems = [
-  { to: '/categories', label: 'Categories', icon: HiTag },
-  { to: '/settings', label: 'Settings', icon: HiCog },
+  { to: '/categories', label: 'Categories', cmd: 'CATEGORIES', icon: HiTag },
+  { to: '/settings', label: 'Settings', cmd: 'SETTINGS', icon: HiCog },
 ];
 
 // Lightweight shared state so sibling components (e.g. FloatingActionButton) can
@@ -47,6 +48,7 @@ const BottomNav = () => {
   const [moreOpen, setMoreOpenState] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const { theme } = useTheme();
 
   const setMoreOpen = (value: boolean | ((prev: boolean) => boolean)) => {
     setMoreOpenState((prev) => {
@@ -67,6 +69,109 @@ const BottomNav = () => {
     if (moreOpen) document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [moreOpen]);
+
+  {/* CYBERPUNK THEME */}
+  if (theme === 'cyberpunk') {
+    return (
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 safe-area-bottom"
+        style={{
+          background: '#000000',
+          borderTop: '1px solid rgba(0,255,65,0.3)',
+          fontFamily: "'Courier New', Courier, monospace",
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '4px 0' }}>
+          {mainNavItems.map(({ to, cmd }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              style={({ isActive }) => ({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '6px 8px',
+                fontSize: '10px',
+                letterSpacing: '0.06em',
+                textDecoration: 'none',
+                color: isActive ? '#FF00FF' : '#00CC33',
+                minWidth: '44px',
+              })}
+            >
+              {({ isActive }) => (
+                <span style={{ whiteSpace: 'nowrap' }}>
+                  {isActive ? '>>' : '>'} {cmd}
+                </span>
+              )}
+            </NavLink>
+          ))}
+
+          {/* More button */}
+          <div ref={moreRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <button
+              onClick={() => setMoreOpen((v) => !v)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '6px 8px',
+                fontSize: '10px',
+                letterSpacing: '0.06em',
+                background: 'transparent',
+                border: 'none',
+                color: moreActive ? '#FF00FF' : '#00CC33',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                minWidth: '44px',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap' }}>{moreActive ? '>>' : '>'} MORE</span>
+            </button>
+
+            {/* Popover */}
+            {moreOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  right: 0,
+                  background: '#000000',
+                  border: '1px solid rgba(0,255,65,0.4)',
+                  minWidth: '140px',
+                  marginBottom: '4px',
+                  zIndex: 50,
+                }}
+              >
+                {moreNavItems.map(({ to, cmd }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => setMoreOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'block',
+                      padding: '10px 14px',
+                      fontSize: '12px',
+                      letterSpacing: '0.06em',
+                      textDecoration: 'none',
+                      color: isActive ? '#FF00FF' : '#00CC33',
+                      background: isActive ? 'rgba(255,0,255,0.08)' : 'transparent',
+                      borderBottom: '1px solid rgba(0,255,65,0.1)',
+                      fontFamily: "'Courier New', Courier, monospace",
+                    })}
+                  >
+                    {({ isActive }) => (
+                      <span>{isActive ? '>> ' : '> '}{cmd}</span>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700/80 z-40 safe-area-bottom">

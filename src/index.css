@@ -45,117 +45,177 @@
   }
 }
 
-/* ─── OLED Pure Black theme ───────────────────────────────────────────────── */
-/* Overrides sit outside @layer so they beat layered component styles.         */
-/* OLED uses the dark: variants as base + pushes all surfaces to true black.   */
-
-[data-theme="oled"] body {
+/* ═══════════════════════════════════════════════════════════
+   OLED THEME — pure black, dark: Tailwind variants apply
+   ═══════════════════════════════════════════════════════════ */
+.theme-oled body {
   background-color: #000000;
 }
-[data-theme="oled"] .card {
+.theme-oled .card {
   background-color: #000000;
   border-color: rgba(255, 255, 255, 0.07);
   box-shadow: none;
 }
-[data-theme="oled"] header {
+.theme-oled header {
   background-color: rgba(0, 0, 0, 0.98) !important;
   border-bottom-color: rgba(255, 255, 255, 0.07) !important;
 }
-[data-theme="oled"] aside,
-[data-theme="oled"] nav {
+.theme-oled aside,
+.theme-oled nav {
   background-color: #000000 !important;
   border-color: rgba(255, 255, 255, 0.07) !important;
 }
-[data-theme="oled"] .form-input {
+.theme-oled .form-input {
   background-color: #0a0a0a;
   border-color: rgba(255, 255, 255, 0.12);
 }
-[data-theme="oled"] .btn-secondary {
+.theme-oled .btn-secondary {
   background-color: transparent;
   border-color: rgba(255, 255, 255, 0.15);
 }
-[data-theme="oled"] ::-webkit-scrollbar-thumb {
+.theme-oled ::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* ─── Cyberpunk theme ─────────────────────────────────────────────────────── */
-/* Concept: neon terminal, pure black, electric green primary, cyan accent.    */
-/* Recharts chart colors are hardcoded (not CSS-variable-driven) — chart fill  */
-/* colors remain the default indigo palette in this theme (known limitation).  */
+/* ═══════════════════════════════════════════════════════════
+   CYBERPUNK TERMINAL THEME
+   Recharts chart colors are hardcoded — chart fills remain
+   the default palette in this theme (known limitation).
+   ═══════════════════════════════════════════════════════════ */
 
-[data-theme="cyberpunk"] body {
-  background-color: #000000;
-  color: #00ff41;
+/* --- Keyframes --- */
+@keyframes cp-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
-[data-theme="cyberpunk"] .card {
-  background-color: #000000;
-  border-radius: 2px;
-  border: 1px solid rgba(0, 255, 65, 0.25);
-  box-shadow: none;
+
+/* --- CSS custom properties scoped to cyberpunk --- */
+.theme-cyberpunk {
+  --cp-green:      #00FF41;
+  --cp-green-dim:  #00CC33;
+  --cp-green-dark: #008F11;
+  --cp-magenta:    #FF00FF;
+  --cp-cyan:       #00FFFF;
+  --cp-red:        #FF0040;
+  --cp-border:     rgba(0, 255, 65, 0.4);
+  --cp-border-dim: rgba(0, 255, 65, 0.2);
 }
-[data-theme="cyberpunk"] header {
-  background-color: rgba(0, 0, 0, 0.98) !important;
-  border-bottom: 1px solid rgba(0, 255, 65, 0.25) !important;
-}
-[data-theme="cyberpunk"] aside,
-[data-theme="cyberpunk"] nav {
+
+/* --- Body base --- */
+.theme-cyberpunk body {
   background-color: #000000 !important;
-  border-color: rgba(0, 255, 65, 0.2) !important;
-}
-
-/* Typography */
-[data-theme="cyberpunk"] h1,
-[data-theme="cyberpunk"] h2,
-[data-theme="cyberpunk"] h3,
-[data-theme="cyberpunk"] h4 {
-  color: #00ff41;
+  color: #00FF41 !important;
+  font-family: 'Courier New', Courier, monospace !important;
   letter-spacing: 0.05em;
 }
 
-/* Form inputs: green border, dark bg, green text */
-[data-theme="cyberpunk"] .form-input {
-  background-color: #050505;
-  border: 1px solid rgba(0, 255, 65, 0.4);
-  border-radius: 2px;
-  color: #00ff41;
-}
-[data-theme="cyberpunk"] .form-input:focus {
-  border-color: #00ff41;
-  box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.2);
-}
-[data-theme="cyberpunk"] .form-label {
-  color: rgba(0, 255, 65, 0.7);
-}
-
-/* Primary button: outlined neon green */
-[data-theme="cyberpunk"] .btn-primary {
-  background-color: transparent;
-  border: 1px solid #00ff41;
-  color: #00ff41;
-  border-radius: 2px;
-  box-shadow: none;
-}
-[data-theme="cyberpunk"] .btn-primary:hover {
-  background-color: rgba(0, 255, 65, 0.08);
-}
-[data-theme="cyberpunk"] .btn-primary:active {
-  background-color: rgba(0, 255, 65, 0.15);
+/* Scanline overlay — purely cosmetic, never blocks interaction */
+.theme-cyberpunk body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, 0.04) 1px,
+    rgba(0, 0, 0, 0.04) 2px
+  );
 }
 
-/* Secondary button: outlined, dimmer */
-[data-theme="cyberpunk"] .btn-secondary {
-  background-color: transparent;
-  border: 1px solid rgba(0, 255, 65, 0.35);
-  color: rgba(0, 255, 65, 0.8);
-  border-radius: 2px;
-}
-[data-theme="cyberpunk"] .btn-secondary:hover {
-  background-color: rgba(0, 255, 65, 0.05);
-  border-color: rgba(0, 255, 65, 0.6);
+/* --- Scrollbar --- */
+.theme-cyberpunk ::-webkit-scrollbar-thumb {
+  background: #008F11 !important;
+  border-radius: 0 !important;
 }
 
-/* Scrollbar */
-[data-theme="cyberpunk"] ::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 255, 65, 0.3);
-  border-radius: 0;
+/* --- Background overrides --- */
+.theme-cyberpunk .bg-gray-50,
+.theme-cyberpunk .dark\:bg-gray-950 {
+  background-color: #000000 !important;
 }
+
+/* Main layout wrapper */
+.theme-cyberpunk .flex.h-screen {
+  background-color: #000000 !important;
+}
+
+/* --- Cards --- */
+.theme-cyberpunk .card {
+  background-color: #000000 !important;
+  border: 1px solid var(--cp-border-dim) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* --- Buttons --- */
+.theme-cyberpunk .btn-primary {
+  background-color: #000000 !important;
+  border: 1px solid #00FF41 !important;
+  color: #00FF41 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.theme-cyberpunk .btn-primary:hover {
+  background-color: rgba(0, 255, 65, 0.1) !important;
+}
+.theme-cyberpunk .btn-secondary {
+  background-color: #000000 !important;
+  border: 1px solid var(--cp-border) !important;
+  color: #00CC33 !important;
+  border-radius: 0 !important;
+}
+
+/* --- Form inputs --- */
+.theme-cyberpunk .form-input {
+  background-color: #000000 !important;
+  border: 1px solid var(--cp-border-dim) !important;
+  color: #00FF41 !important;
+  border-radius: 0 !important;
+  font-family: 'Courier New', Courier, monospace !important;
+}
+.theme-cyberpunk .form-input:focus {
+  border-color: #00FF41 !important;
+  box-shadow: 0 0 0 1px #00FF41 !important;
+}
+.theme-cyberpunk .form-input::placeholder {
+  color: #008F11 !important;
+  opacity: 1;
+}
+
+/* --- Badges --- */
+.theme-cyberpunk .badge {
+  color: #FF00FF !important;
+  background-color: rgba(255, 0, 255, 0.1) !important;
+  border-radius: 0 !important;
+  border: 1px solid rgba(255, 0, 255, 0.3) !important;
+}
+
+/* --- Universal font override --- */
+.theme-cyberpunk * {
+  font-family: 'Courier New', Courier, monospace !important;
+}
+
+/* --- Blinking cursor helper class --- */
+.cp-blink {
+  animation: cp-blink 0.8s step-end infinite;
+}
+
+/* --- Segmented progress bar --- */
+.cp-seg-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+.cp-seg-bar .cp-seg {
+  flex: 1;
+  height: 100%;
+}
+.cp-seg-bar .cp-seg.filled-green  { background-color: #00FF41; }
+.cp-seg-bar .cp-seg.filled-yellow { background-color: #FFFF00; }
+.cp-seg-bar .cp-seg.filled-red    { background-color: #FF0040; }
+.cp-seg-bar .cp-seg.empty         { background-color: rgba(0, 255, 65, 0.12); border: 1px solid rgba(0, 255, 65, 0.15); }

@@ -20,6 +20,7 @@ import FilteredTransactionView, { type TransactionFilterDescriptor } from '../co
 import QuickAddModal from '../common/QuickAddModal';
 import SwipeableAccountCard from './SwipeableAccountCard';
 import { toast } from '../common/Toast';
+import { useTheme } from '../../hooks/useTheme';
 
 interface AccountListProps {
   accounts: Account[];
@@ -41,6 +42,16 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   investment: 'Investment',
 };
 
+const ACCOUNT_TYPE_TERMINAL: Record<string, string> = {
+  savings: 'SAVINGS',
+  current: 'CURRENT',
+  credit: 'CREDIT',
+  cash: 'CASH',
+  upi: 'UPI',
+  loan: 'LOAN',
+  investment: 'INVEST',
+};
+
 const AccountList = ({
   accounts,
   transactions,
@@ -52,6 +63,7 @@ const AccountList = ({
 }: AccountListProps) => {
   const formatCurrency = useFormatCurrency();
   const [filter, setFilter] = useState<'active' | 'archived'>('active');
+  const { theme } = useTheme();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<string | null>(null);
   const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
@@ -134,6 +146,200 @@ const AccountList = ({
     totalCreditLimit > 0
       ? Math.min((totalAvailableCredit / totalCreditLimit) * 100, 100)
       : 0;
+
+  {/* CYBERPUNK THEME */}
+  if (theme === 'cyberpunk') {
+    const cpFont: React.CSSProperties = { fontFamily: "'Courier New', Courier, monospace" };
+    return (
+      <div style={{ ...cpFont, color: '#00FF41' }} className="space-y-4 animate-fade-in">
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '18px', letterSpacing: '0.08em', color: '#00FF41' }}>[ACCOUNTS]</div>
+            <div style={{ fontSize: '11px', color: '#008F11', letterSpacing: '0.06em' }}>
+              ACTIVE_ACCOUNTS: {activeAccounts.length}
+            </div>
+          </div>
+          <button onClick={onAdd} className="btn-primary text-sm">
+            + ADD_ACCOUNT
+          </button>
+        </div>
+
+        {/* Summary cards */}
+        {activeAccounts.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.3)', padding: '12px' }}>
+              <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em' }}>[SAVINGS_ASSETS]</div>
+              <div style={{ color: '#00FF41', fontSize: '20px', fontWeight: 'bold', margin: '6px 0' }}>
+                {formatCurrency(totalAssetBalance)}
+              </div>
+              <div style={{ color: '#008F11', fontSize: '10px' }}>
+                ACCOUNTS: {assetAccounts.length} // TYPE: [ASSET]
+              </div>
+            </div>
+            <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.3)', padding: '12px' }}>
+              <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em' }}>[CREDIT_CARDS]</div>
+              <div style={{ color: '#00FFFF', fontSize: '20px', fontWeight: 'bold', margin: '6px 0' }}>
+                {formatCurrency(totalAvailableCredit)}
+              </div>
+              <div style={{ color: '#008F11', fontSize: '10px' }}>
+                OWED: <span style={{ color: '#FF0040' }}>{formatCurrency(totalAmountOwed)}</span> // LIMIT: {formatCurrency(totalCreditLimit)}
+              </div>
+              {/* Segmented credit utilization bar */}
+              <div className="cp-seg-bar" style={{ marginTop: '8px' }}>
+                {Array.from({ length: 10 }).map((_, i) => {
+                  const threshold = (i + 1) * 10;
+                  const filled = threshold <= usedPercent;
+                  const cls = filled
+                    ? usedPercent >= 100 ? 'cp-seg filled-red'
+                      : usedPercent >= 80 ? 'cp-seg filled-yellow'
+                      : 'cp-seg filled-green'
+                    : 'cp-seg empty';
+                  return <div key={i} className={cls} />;
+                })}
+              </div>
+              <div style={{ color: '#008F11', fontSize: '9px', marginTop: '3px' }}>
+                UTILIZATION: {Math.round(usedPercent)}%
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filter tabs */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {(['active', 'archived'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                background: '#000000',
+                border: filter === f ? '1px solid #FF00FF' : '1px solid rgba(0,255,65,0.3)',
+                color: filter === f ? '#FF00FF' : '#00CC33',
+                padding: '4px 16px',
+                fontSize: '11px',
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              [{f.toUpperCase()}] ({accounts.filter((a) => (f === 'active' ? a.active : !a.active)).length})
+            </button>
+          ))}
+        </div>
+
+        {/* Account cards */}
+        {filtered.length === 0 ? (
+          <div style={{ color: '#008F11', padding: '24px', textAlign: 'center', border: '1px solid rgba(0,255,65,0.2)' }}>
+            NO_ACCOUNTS_FOUND // {filter.toUpperCase()}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+            {filtered.map((account) => {
+              const isCredit = account.type === 'credit';
+              const availableCredit = isCredit ? Number(account.openingBalance) || 0 : null;
+              const totalLimit = isCredit ? Number(account.creditLimit) || 0 : null;
+              const amountOwed = isCredit && totalLimit !== null && availableCredit !== null
+                ? Math.max(totalLimit - availableCredit, 0) : null;
+              const typeLabel = ACCOUNT_TYPE_TERMINAL[account.type] || account.type.toUpperCase();
+              const accountNameUpper = account.name.toUpperCase().replace(/\s+/g, '_');
+
+              return (
+                <div
+                  key={account.id}
+                  style={{
+                    background: '#000000',
+                    border: '1px solid rgba(0,255,65,0.3)',
+                    padding: '12px',
+                    opacity: !account.active ? 0.6 : 1,
+                  }}
+                  className="group"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div>
+                      <div style={{ color: '#00FF41', fontSize: '13px', letterSpacing: '0.06em', fontWeight: 'bold' }}>
+                        {accountNameUpper}
+                      </div>
+                      <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.06em' }}>
+                        TYPE: [{typeLabel}]
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', opacity: 0 }} className="group-hover:opacity-100 transition-opacity">
+                      {account.active ? (
+                        <>
+                          <button onClick={() => onEdit(account)} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,0.3)', color: '#00CC33', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>EDIT</button>
+                          <button onClick={() => setArchiveTarget(account.id)} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,0.3)', color: '#008F11', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>ARCH</button>
+                        </>
+                      ) : (
+                        <button onClick={() => onReactivate(account.id)} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,0.3)', color: '#00FF41', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>REACTIVATE</button>
+                      )}
+                      <button onClick={() => setDeleteTarget(account.id)} style={{ background: 'transparent', border: '1px solid rgba(255,0,64,0.3)', color: '#FF0040', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>DEL</button>
+                    </div>
+                  </div>
+
+                  {!isCredit ? (
+                    <>
+                      <div style={{ color: '#00FFFF', fontSize: '18px', fontWeight: 'bold', letterSpacing: '0.04em' }}>
+                        {formatCurrency(account.openingBalance)}
+                      </div>
+                      <div style={{ color: '#008F11', fontSize: '10px', marginTop: '4px' }}>
+                        OPENED: {new Date(account.openingDate).toLocaleDateString()}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: '11px' }}>
+                      <div>
+                        <div style={{ color: '#008F11', fontSize: '9px' }}>AVAILABLE_CREDIT</div>
+                        <div style={{ color: '#00FFFF', fontSize: '16px', fontWeight: 'bold' }}>{formatCurrency(availableCredit ?? 0)}</div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px' }}>
+                        <div>
+                          <div style={{ color: '#008F11', fontSize: '9px' }}>OWED</div>
+                          <div style={{ color: '#FF0040' }}>{formatCurrency(amountOwed ?? 0)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: '#008F11', fontSize: '9px' }}>LIMIT</div>
+                          <div style={{ color: '#00CC33' }}>{formatCurrency(totalLimit ?? 0)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!account.active && (
+                    <div style={{ marginTop: '6px', color: '#008F11', fontSize: '10px', border: '1px solid rgba(0,255,65,0.2)', display: 'inline-block', padding: '1px 6px' }}>
+                      [ARCHIVED]
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <ConfirmDialog
+          isOpen={archiveTarget !== null}
+          title="Archive account"
+          message="The account will be hidden from active views but its transactions will be preserved."
+          confirmLabel="Archive"
+          onConfirm={() => { if (archiveTarget) onArchive(archiveTarget); }}
+          onCancel={() => setArchiveTarget(null)}
+        />
+        <ConfirmDialog
+          isOpen={deleteTarget !== null}
+          title="Delete account"
+          message={
+            deleteTargetTxCount > 0
+              ? `This account has ${deleteTargetTxCount} transaction${deleteTargetTxCount === 1 ? '' : 's'}. Deleting it will leave them unassigned. Consider archiving instead.`
+              : 'This will permanently delete the account. This action cannot be undone.'
+          }
+          confirmLabel="Delete anyway"
+          alternativeLabel={deleteTargetTxCount > 0 ? '🗄️ Archive instead (recommended)' : undefined}
+          onAlternative={deleteTargetTxCount > 0 ? () => { if (deleteTarget) onArchive(deleteTarget); setDeleteTarget(null); } : undefined}
+          onConfirm={() => { if (deleteTarget) onDelete(deleteTarget); }}
+          onCancel={() => setDeleteTarget(null)}
+          danger
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 animate-fade-in">
