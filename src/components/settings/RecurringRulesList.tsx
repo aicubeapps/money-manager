@@ -13,13 +13,21 @@ import { toast } from '../common/Toast';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
-import type { RecurringRule, RecurringFrequency, Tag, TransactionType } from '../../types';
+import type { RecurringRule, RecurringFrequency, MonthlyWeekPosition, Tag, TransactionType } from '../../types';
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 // Index = Date.getDay() convention (0=Sunday..6=Saturday), matching
 // recurringDates.ts / date-fns nextDay(), not the ISO week (Monday=1).
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const WEEK_POSITION_OPTIONS = [
+  { value: 'first', label: 'First' },
+  { value: 'second', label: 'Second' },
+  { value: 'third', label: 'Third' },
+  { value: 'fourth', label: 'Fourth' },
+  { value: 'last', label: 'Last' },
+] as const;
 
 type EditFormState = {
   type: TransactionType;
@@ -30,6 +38,7 @@ type EditFormState = {
   tagId: string;
   frequency: RecurringFrequency;
   dayOfMonth: string;
+  weekOfMonth: MonthlyWeekPosition | '';
   dayOfWeek: number | null;
   startDate: string;
   nextDueDate: string;
@@ -44,6 +53,7 @@ const toEditFormState = (rule: RecurringRule): EditFormState => ({
   tagId: rule.templateTransaction.tags?.[0] || '',
   frequency: rule.frequency,
   dayOfMonth: rule.dayOfMonth ? String(rule.dayOfMonth) : '',
+  weekOfMonth: rule.weekOfMonth || '',
   dayOfWeek: typeof rule.dayOfWeek === 'number' ? rule.dayOfWeek : null,
   startDate: rule.startDate,
   nextDueDate: rule.nextDueDate,
@@ -60,6 +70,7 @@ const RecurringRulesList = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [editingRule, setEditingRule] = useState<RecurringRule | null>(null);
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
+  const [monthlySubMode, setMonthlySubMode] = useState<'specific-day' | 'week-position'>('specific-day');
   const [saving, setSaving] = useState(false);
 
   const fetchRules = async () => {
@@ -115,6 +126,7 @@ const RecurringRulesList = () => {
   const openEdit = (rule: RecurringRule) => {
     setEditingRule(rule);
     setEditForm(toEditFormState(rule));
+    setMonthlySubMode(rule.frequency === 'monthly' && rule.weekOfMonth ? 'week-position' : 'specific-day');
   };
 
   const closeEdit = () => {
@@ -135,14 +147,22 @@ const RecurringRulesList = () => {
       return;
     }
 
-    const isMonthlyOrYearly = editForm.frequency === 'monthly' || editForm.frequency === 'yearly';
-    const dayOfMonth = isMonthlyOrYearly ? parseInt(editForm.dayOfMonth, 10) : undefined;
-    if (isMonthlyOrYearly && (!dayOfMonth || dayOfMonth < 1 || dayOfMonth > 31)) {
+    const isYearly = editForm.frequency === 'yearly';
+    const isMonthlySpecific = editForm.frequency === 'monthly' && monthlySubMode === 'specific-day';
+    const isMonthlyWeekPos = editForm.frequency === 'monthly' && monthlySubMode === 'week-position';
+    const isWeekly = editForm.frequency === 'weekly';
+
+    const dayOfMonth = isYearly || isMonthlySpecific ? parseInt(editForm.dayOfMonth, 10) : undefined;
+    if ((isYearly || isMonthlySpecific) && (!dayOfMonth || dayOfMonth < 1 || dayOfMonth > 31)) {
       toast.error('Day of month must be between 1 and 31');
       return;
     }
 
-    const isWeekly = editForm.frequency === 'weekly';
+    if (isMonthlyWeekPos) {
+      if (!editForm.weekOfMonth) { toast.error('Select a week position'); return; }
+      if (editForm.dayOfWeek === null) { toast.error('Select a day of the week'); return; }
+    }
+
     if (isWeekly && editForm.dayOfWeek === null) {
       toast.error('Select a day of the week');
       return;
@@ -161,7 +181,8 @@ const RecurringRulesList = () => {
         },
         frequency: editForm.frequency,
         dayOfMonth,
-        dayOfWeek: isWeekly ? editForm.dayOfWeek! : undefined,
+        weekOfMonth: isMonthlyWeekPos ? (editForm.weekOfMonth as MonthlyWeekPosition) : undefined,
+        dayOfWeek: isWeekly || isMonthlyWeekPos ? editForm.dayOfWeek! : undefined,
         startDate: editForm.startDate,
         nextDueDate: editForm.nextDueDate,
       });
@@ -372,7 +393,7 @@ const RecurringRulesList = () => {
                 </select>
               </div>
 
-              {(editForm.frequency === 'monthly' || editForm.frequency === 'yearly') && (
+              {editForm.frequency === 'yearly' && (
                 <div>
                   <label className="form-label">Day of month</label>
                   <input
@@ -383,6 +404,79 @@ const RecurringRulesList = () => {
                     onChange={(e) => setEditForm({ ...editForm, dayOfMonth: e.target.value })}
                     className="form-input"
                   />
+                </div>
+              )}
+
+              {editForm.frequency === 'monthly' && (
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    {(['specific-day', 'week-position'] as const).map((mode) => (
+                      <label key={mode} className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={monthlySubMode === mode}
+                          onChange={() => {
+                            setMonthlySubMode(mode);
+                            if (mode === 'week-position' && !editForm.weekOfMonth) {
+                              setEditForm({ ...editForm, weekOfMonth: 'first' });
+                            }
+                          }}
+                          className="w-3.5 h-3.5 text-primary-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {mode === 'specific-day' ? 'Specific day' : 'Week position'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {monthlySubMode === 'specific-day' ? (
+                    <div>
+                      <label className="form-label">Day of month</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={editForm.dayOfMonth}
+                        onChange={(e) => setEditForm({ ...editForm, dayOfMonth: e.target.value })}
+                        className="form-input"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="form-label">Week</label>
+                        <select
+                          value={editForm.weekOfMonth || 'first'}
+                          onChange={(e) => setEditForm({ ...editForm, weekOfMonth: e.target.value as MonthlyWeekPosition })}
+                          className="form-input"
+                        >
+                          {WEEK_POSITION_OPTIONS.map(({ value, label }) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Day of week</label>
+                        <div className="grid grid-cols-7 gap-1">
+                          {WEEKDAY_LABELS.map((label, dayIndex) => (
+                            <button
+                              key={label}
+                              type="button"
+                              onClick={() => setEditForm({ ...editForm, dayOfWeek: dayIndex })}
+                              className={`py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                editForm.dayOfWeek === dayIndex
+                                  ? 'bg-primary-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

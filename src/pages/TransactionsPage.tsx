@@ -88,7 +88,8 @@ const TransactionsPage = () => {
           recurringRule.startDate,
           recurringRule.frequency,
           recurringRule.dayOfMonth,
-          recurringRule.dayOfWeek
+          recurringRule.dayOfWeek,
+          recurringRule.weekOfMonth
         );
         await createRecurringRule(currentUser.uid, {
           templateTransaction: {
@@ -110,6 +111,7 @@ const TransactionsPage = () => {
           },
           frequency: recurringRule.frequency,
           dayOfMonth: recurringRule.dayOfMonth,
+          weekOfMonth: recurringRule.weekOfMonth,
           dayOfWeek: recurringRule.dayOfWeek,
           startDate: recurringRule.startDate,
           nextDueDate,

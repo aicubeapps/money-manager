@@ -26,6 +26,7 @@ const transactionSchema = z
     recurringFrequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
     recurringDayOfMonth: z.number().optional(),
     recurringDayOfWeek: z.number().min(0).max(6).optional(),
+    recurringWeekOfMonth: z.enum(['first', 'second', 'third', 'fourth', 'last']).optional(),
     recurringStartDate: z.string().optional(),
   })
   .refine(
@@ -54,12 +55,20 @@ const transactionSchema = z
   .refine(
     (data) => {
       if (!data.isRecurring) return true;
-      if (data.recurringFrequency === 'monthly' || data.recurringFrequency === 'yearly') {
+      if (data.recurringFrequency === 'yearly') {
         return (
           typeof data.recurringDayOfMonth === 'number' &&
           data.recurringDayOfMonth >= 1 &&
           data.recurringDayOfMonth <= 31
         );
+      }
+      if (data.recurringFrequency === 'monthly') {
+        const hasSpecificDay =
+          typeof data.recurringDayOfMonth === 'number' &&
+          data.recurringDayOfMonth >= 1 &&
+          data.recurringDayOfMonth <= 31;
+        const hasWeekPos = !!data.recurringWeekOfMonth && typeof data.recurringDayOfWeek === 'number';
+        return hasSpecificDay || hasWeekPos;
       }
       return true;
     },
@@ -88,6 +97,14 @@ interface TransactionFormProps {
 // recurringDates.ts / date-fns nextDay(), not the ISO week (Monday=1).
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const WEEK_POSITION_OPTIONS = [
+  { value: 'first', label: 'First' },
+  { value: 'second', label: 'Second' },
+  { value: 'third', label: 'Third' },
+  { value: 'fourth', label: 'Fourth' },
+  { value: 'last', label: 'Last' },
+] as const;
+
 const TYPE_OPTIONS = [
   { value: 'expense', label: '💸 Expense', color: 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' },
   { value: 'income', label: '💰 Income', color: 'border-green-400 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' },
@@ -104,6 +121,8 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryType, setNewCategoryType] = useState<CategoryType>('expense');
   const [creatingCategory, setCreatingCategory] = useState(false);
+
+  const [monthlySubMode, setMonthlySubMode] = useState<'specific-day' | 'week-position'>('specific-day');
 
   const [driveReady, setDriveReady] = useState(isDriveConnected());
   const [connectingDrive, setConnectingDrive] = useState(false);
@@ -225,6 +244,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   const recurringStartDate = watch('recurringStartDate');
   const recurringDayOfMonth = watch('recurringDayOfMonth');
   const recurringDayOfWeek = watch('recurringDayOfWeek');
+  const recurringWeekOfMonth = watch('recurringWeekOfMonth');
 
   // Default the recurrence start date to the transaction's own date the first
   // time the toggle is turned on, without overwriting a value the user already set.
@@ -348,13 +368,19 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
     // updateDoc only touches keys present in the payload.
     payload.receiptDriveFileId = receiptFileId || null;
     if (data.isRecurring && data.recurringFrequency && data.recurringStartDate) {
+      const isMonthlyWeekPos = data.recurringFrequency === 'monthly' && monthlySubMode === 'week-position';
       payload.recurringRule = {
         frequency: data.recurringFrequency,
         dayOfMonth:
-          data.recurringFrequency === 'monthly' || data.recurringFrequency === 'yearly'
+          (data.recurringFrequency === 'monthly' && !isMonthlyWeekPos) ||
+          data.recurringFrequency === 'yearly'
             ? data.recurringDayOfMonth
             : undefined,
-        dayOfWeek: data.recurringFrequency === 'weekly' ? data.recurringDayOfWeek : undefined,
+        weekOfMonth: isMonthlyWeekPos ? data.recurringWeekOfMonth : undefined,
+        dayOfWeek:
+          data.recurringFrequency === 'weekly' || isMonthlyWeekPos
+            ? data.recurringDayOfWeek
+            : undefined,
         startDate: data.recurringStartDate,
       };
     }
@@ -702,7 +728,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
                   )}
                 </div>
 
-                {(recurringFrequency === 'monthly' || recurringFrequency === 'yearly') && (
+                {recurringFrequency === 'yearly' && (
                   <div>
                     <label className="form-label">Day of month</label>
                     <input
@@ -714,6 +740,85 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
                     />
                     {errors.recurringDayOfMonth && (
                       <p className="text-red-500 text-xs mt-1">{errors.recurringDayOfMonth.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {recurringFrequency === 'monthly' && (
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      {(['specific-day', 'week-position'] as const).map((mode) => (
+                        <label key={mode} className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            checked={monthlySubMode === mode}
+                            onChange={() => {
+                              setMonthlySubMode(mode);
+                              if (mode === 'week-position') {
+                                if (!recurringWeekOfMonth) setValue('recurringWeekOfMonth', 'first');
+                                if (typeof recurringDayOfWeek !== 'number') {
+                                  const anchor = recurringStartDate || dateValue;
+                                  if (anchor) setValue('recurringDayOfWeek', new Date(anchor).getDay());
+                                }
+                              }
+                            }}
+                            className="w-3.5 h-3.5 text-primary-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {mode === 'specific-day' ? 'Specific day' : 'Week position'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+
+                    {monthlySubMode === 'specific-day' ? (
+                      <div>
+                        <label className="form-label">Day of month</label>
+                        <input
+                          {...register('recurringDayOfMonth', { valueAsNumber: true })}
+                          type="number"
+                          min="1"
+                          max="31"
+                          className="form-input"
+                        />
+                        {errors.recurringDayOfMonth && (
+                          <p className="text-red-500 text-xs mt-1">{errors.recurringDayOfMonth.message}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="form-label">Week</label>
+                          <select
+                            value={recurringWeekOfMonth || 'first'}
+                            onChange={(e) => setValue('recurringWeekOfMonth', e.target.value as any)}
+                            className="form-input"
+                          >
+                            {WEEK_POSITION_OPTIONS.map(({ value, label }) => (
+                              <option key={value} value={value}>{label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="form-label">Day of week</label>
+                          <div className="grid grid-cols-7 gap-1">
+                            {WEEKDAY_LABELS.map((label, dayIndex) => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => setValue('recurringDayOfWeek', dayIndex)}
+                                className={`py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                  recurringDayOfWeek === dayIndex
+                                    ? 'bg-primary-500 text-white'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
