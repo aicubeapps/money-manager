@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrency } from '../context/CurrencyContext';
-import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiOutlineCurrencyDollar, HiChevronRight, HiOutlineCloudUpload, HiOutlineCloud } from 'react-icons/hi';
+import { HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiOutlineCurrencyDollar, HiChevronRight, HiOutlineCloudUpload, HiOutlineCloud, HiOutlineColorSwatch } from 'react-icons/hi';
+import type { Theme } from '../context/ThemeContext';
 import RecurringRulesList from '../components/settings/RecurringRulesList';
 import { FIAT_CURRENCIES, CRYPTO_CURRENCIES } from '../services/currencyService';
 import { connectDrive, disconnectDrive, isDriveConnected, hasConnectedBefore, reconnectDriveSilently } from '../services/googleDriveService';
@@ -21,8 +22,15 @@ const formatBackupDate = (date: Date | null) => {
   return date.toLocaleString();
 };
 
+const THEME_OPTIONS: { value: Theme; label: string; icon: string; desc: string }[] = [
+  { value: 'light', label: 'Light', icon: '☀️', desc: 'Clean light interface' },
+  { value: 'dark', label: 'Dark', icon: '🌙', desc: 'Easy on the eyes' },
+  { value: 'oled', label: 'OLED Black', icon: '⬛', desc: 'True black for OLED screens' },
+  { value: 'cyberpunk', label: 'Cyberpunk', icon: '⚡', desc: 'Neon terminal aesthetic' },
+];
+
 const SettingsPage = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { userData, currentUser, logout } = useAuth();
   const {
     enabled: currencyEnabled,
@@ -174,29 +182,27 @@ const SettingsPage = () => {
 
       {/* Appearance */}
       <div className="card p-5">
-        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Appearance</h2>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {theme === 'dark' ? (
-              <HiOutlineMoon className="w-5 h-5 text-primary-500" />
-            ) : (
-              <HiOutlineSun className="w-5 h-5 text-amber-500" />
-            )}
-            <div>
-              <div className="font-medium text-gray-900 dark:text-white">
-                {theme === 'dark' ? 'Dark mode' : 'Light mode'}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {theme === 'dark' ? 'Using dark theme' : 'Using light theme'}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${theme === 'dark' ? 'bg-primary-500' : 'bg-gray-300'}`}
-          >
-            <span className={`absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${theme === 'dark' ? 'translate-x-6' : 'translate-x-0'}`} />
-          </button>
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4 flex items-center gap-2">
+          <HiOutlineColorSwatch className="w-4 h-4" /> Appearance
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          {THEME_OPTIONS.map(({ value, label, icon, desc }) => (
+            <button
+              key={value}
+              onClick={() => setTheme(value)}
+              className={`flex flex-col items-start gap-1 p-3 rounded-xl border-2 text-left transition-all duration-150 ${
+                theme === value
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+            >
+              <span className="text-lg leading-none">{icon}</span>
+              <span className={`text-sm font-semibold ${theme === value ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'}`}>
+                {label}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{desc}</span>
+            </button>
+          ))}
         </div>
       </div>
 
