@@ -1,38 +1,53 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'cyberpunk' | 'oled';
 
 interface ThemeContextType {
   theme: Theme;
+  setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const THEME_CLASSES: Record<Theme, string[]> = {
+  light: [],
+  dark: ['dark'],
+  cyberpunk: ['dark', 'theme-cyberpunk'],
+  oled: ['dark', 'theme-oled'],
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem('theme') as Theme | null;
-    if (stored) return stored;
+    if (stored && ['light', 'dark', 'cyberpunk', 'oled'].includes(stored)) return stored as Theme;
     if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
     return 'light';
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    // Remove all theme classes
+    root.classList.remove('dark', 'theme-cyberpunk', 'theme-oled');
+    // Apply classes for current theme
+    THEME_CLASSES[theme].forEach((cls) => root.classList.add(cls));
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  const setTheme = (t: Theme) => setThemeState(t);
+
+  // Legacy toggle: cycles light → dark → light (kept for header button compatibility)
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setThemeState((prev) => {
+      if (prev === 'light') return 'dark';
+      if (prev === 'dark') return 'light';
+      // From cyberpunk/oled, go to light
+      return 'light';
+    });
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

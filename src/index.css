@@ -44,3 +44,155 @@
     @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   OLED THEME — pure black backgrounds, existing indigo palette
+   ═══════════════════════════════════════════════════════════ */
+.theme-oled body {
+  background-color: #000000;
+}
+.theme-oled .card {
+  background-color: #0a0a0a;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CYBERPUNK TERMINAL THEME
+   ═══════════════════════════════════════════════════════════ */
+
+/* --- Keyframes --- */
+@keyframes cp-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* --- CSS custom properties scoped to cyberpunk --- */
+.theme-cyberpunk {
+  --cp-green:      #00FF41;
+  --cp-green-dim:  #00CC33;
+  --cp-green-dark: #008F11;
+  --cp-magenta:    #FF00FF;
+  --cp-cyan:       #00FFFF;
+  --cp-red:        #FF0040;
+  --cp-border:     rgba(0, 255, 65, 0.4);
+  --cp-border-dim: rgba(0, 255, 65, 0.2);
+}
+
+/* --- Body base --- */
+.theme-cyberpunk body {
+  background-color: #000000 !important;
+  color: #00FF41 !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  letter-spacing: 0.05em;
+}
+
+/* Scanline overlay — purely cosmetic, never blocks interaction */
+.theme-cyberpunk body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, 0.04) 1px,
+    rgba(0, 0, 0, 0.04) 2px
+  );
+}
+
+/* --- Scrollbar --- */
+.theme-cyberpunk ::-webkit-scrollbar-thumb {
+  background: #008F11 !important;
+  border-radius: 0 !important;
+}
+
+/* --- Background overrides --- */
+.theme-cyberpunk .bg-gray-50,
+.theme-cyberpunk .dark\:bg-gray-950 {
+  background-color: #000000 !important;
+}
+
+/* Main layout wrapper */
+.theme-cyberpunk .flex.h-screen {
+  background-color: #000000 !important;
+}
+
+/* --- Cards --- */
+.theme-cyberpunk .card {
+  background-color: #000000 !important;
+  border: 1px solid var(--cp-border-dim) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* --- Buttons --- */
+.theme-cyberpunk .btn-primary {
+  background-color: #000000 !important;
+  border: 1px solid #00FF41 !important;
+  color: #00FF41 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.theme-cyberpunk .btn-primary:hover {
+  background-color: rgba(0, 255, 65, 0.1) !important;
+}
+.theme-cyberpunk .btn-secondary {
+  background-color: #000000 !important;
+  border: 1px solid var(--cp-border) !important;
+  color: #00CC33 !important;
+  border-radius: 0 !important;
+}
+
+/* --- Form inputs --- */
+.theme-cyberpunk .form-input {
+  background-color: #000000 !important;
+  border: 1px solid var(--cp-border-dim) !important;
+  color: #00FF41 !important;
+  border-radius: 0 !important;
+  font-family: 'Courier New', Courier, monospace !important;
+}
+.theme-cyberpunk .form-input:focus {
+  border-color: #00FF41 !important;
+  box-shadow: 0 0 0 1px #00FF41 !important;
+}
+.theme-cyberpunk .form-input::placeholder {
+  color: #008F11 !important;
+  opacity: 1;
+}
+
+/* --- Badges --- */
+.theme-cyberpunk .badge {
+  color: #FF00FF !important;
+  background-color: rgba(255, 0, 255, 0.1) !important;
+  border-radius: 0 !important;
+  border: 1px solid rgba(255, 0, 255, 0.3) !important;
+}
+
+/* --- Universal font override --- */
+.theme-cyberpunk * {
+  font-family: 'Courier New', Courier, monospace !important;
+}
+
+/* --- Blinking cursor helper class --- */
+.cp-blink {
+  animation: cp-blink 0.8s step-end infinite;
+}
+
+/* --- Segmented progress bar --- */
+.cp-seg-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+.cp-seg-bar .cp-seg {
+  flex: 1;
+  height: 100%;
+}
+.cp-seg-bar .cp-seg.filled-green  { background-color: #00FF41; }
+.cp-seg-bar .cp-seg.filled-yellow { background-color: #FFFF00; }
+.cp-seg-bar .cp-seg.filled-red    { background-color: #FF0040; }
+.cp-seg-bar .cp-seg.empty         { background-color: rgba(0, 255, 65, 0.12); border: 1px solid rgba(0, 255, 65, 0.15); }

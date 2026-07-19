@@ -1,11 +1,116 @@
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
+import type { Theme } from '../context/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
-import { HiOutlineMoon, HiOutlineSun, HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiChevronRight } from 'react-icons/hi';
+import { HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiChevronRight } from 'react-icons/hi';
+
+const THEME_OPTIONS: { value: Theme; label: string; description: string; swatch: string }[] = [
+  { value: 'light', label: 'Light', description: 'Clean light interface', swatch: 'bg-white border-gray-300' },
+  { value: 'dark', label: 'Dark', description: 'Dark interface for low-light environments', swatch: 'bg-gray-900 border-gray-600' },
+  { value: 'oled', label: 'OLED Pure Black', description: 'True black for OLED displays', swatch: 'bg-black border-gray-700' },
+  { value: 'cyberpunk', label: 'CYBERPUNK [TERMINAL]', description: 'Green-on-black terminal aesthetic', swatch: 'bg-black border-green-400' },
+];
 
 const SettingsPage = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { userData, logout } = useAuth();
+
+  const isCyberpunk = theme === 'cyberpunk';
+
+  if (isCyberpunk) {
+    const cpFont: React.CSSProperties = { fontFamily: "'Courier New', Courier, monospace" };
+    return (
+      <div style={{ ...cpFont, color: '#00FF41', maxWidth: '640px' }} className="space-y-6 animate-fade-in">
+        <div>
+          <div style={{ fontSize: '18px', letterSpacing: '0.08em' }}>[SETTINGS]</div>
+          <div style={{ fontSize: '11px', color: '#008F11', letterSpacing: '0.06em' }}>MANAGE_PREFERENCES</div>
+        </div>
+
+        {/* Profile */}
+        {userData && (
+          <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
+            <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[PROFILE]</div>
+            <div style={{ color: '#00FF41', letterSpacing: '0.06em' }}>USER: {userData.displayName?.toUpperCase()}</div>
+            <div style={{ color: '#008F11', fontSize: '11px', marginTop: '4px' }}>{userData.email}</div>
+          </div>
+        )}
+
+        {/* Appearance */}
+        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
+          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[APPEARANCE // THEME_SELECT]</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {THEME_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setTheme(opt.value)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '8px 12px',
+                  background: '#000000',
+                  border: theme === opt.value ? '1px solid #FF00FF' : '1px solid rgba(0,255,65,0.25)',
+                  color: theme === opt.value ? '#FF00FF' : '#00CC33',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                  fontSize: '12px',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                <span style={{ display: 'inline-block', width: '20px', height: '20px', border: theme === opt.value ? '2px solid #FF00FF' : '2px solid rgba(0,255,65,0.4)', background: opt.value === 'light' ? '#ffffff' : opt.value === 'dark' ? '#111827' : '#000000' }} />
+                <span>
+                  {theme === opt.value ? '>> ' : '> '}{opt.label}
+                  {theme === opt.value && <span style={{ color: '#FF00FF', marginLeft: '8px' }}>[ACTIVE]</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
+          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[TAGS]</div>
+          <Link to="/settings/tags" style={{ color: '#00FFFF', fontSize: '12px', letterSpacing: '0.06em', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>&gt; MANAGE_TAGS</span>
+            <span style={{ color: '#008F11' }}>[→]</span>
+          </Link>
+        </div>
+
+        {/* Security */}
+        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
+          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '8px' }}>[SECURITY]</div>
+          <div style={{ color: '#00CC33', fontSize: '11px', lineHeight: '1.6' }}>
+            AUTH: [GOOGLE] // STORAGE: [FIRESTORE] // STATUS: [SECURE]
+          </div>
+        </div>
+
+        {/* Sign out */}
+        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
+          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[ACCOUNT]</div>
+          <button
+            onClick={logout}
+            style={{
+              background: '#000000',
+              border: '1px solid rgba(255,0,64,0.5)',
+              color: '#FF0040',
+              padding: '6px 16px',
+              fontSize: '12px',
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            [LOGOUT] // TERMINATE_SESSION
+          </button>
+        </div>
+
+        <div style={{ color: '#008F11', fontSize: '10px', textAlign: 'center', letterSpacing: '0.06em' }}>
+          EXPENSE_TRACKER v1.0 // REACT + FIREBASE
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl animate-fade-in">
@@ -46,28 +151,29 @@ const SettingsPage = () => {
       {/* Appearance */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Appearance</h2>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {theme === 'dark' ? (
-              <HiOutlineMoon className="w-5 h-5 text-primary-500" />
-            ) : (
-              <HiOutlineSun className="w-5 h-5 text-amber-500" />
-            )}
-            <div>
-              <div className="font-medium text-gray-900 dark:text-white">
-                {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+        <div className="space-y-2">
+          {THEME_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setTheme(opt.value)}
+              className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all duration-150 text-left ${
+                theme === opt.value
+                  ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded border-2 flex-shrink-0 ${opt.swatch}`} />
+              <div className="flex-1">
+                <div className={`font-medium text-sm ${theme === opt.value ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-white'}`}>
+                  {opt.label}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{opt.description}</div>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {theme === 'dark' ? 'Using dark theme' : 'Using light theme'}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${theme === 'dark' ? 'bg-primary-500' : 'bg-gray-300'}`}
-          >
-            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}`} />
-          </button>
+              {theme === opt.value && (
+                <div className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0" />
+              )}
+            </button>
+          ))}
         </div>
       </div>
 

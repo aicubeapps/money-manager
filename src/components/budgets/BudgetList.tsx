@@ -4,6 +4,7 @@ import { formatCurrency } from '../../utils/format';
 import type { Budget, Category } from '../../types';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
+import { useTheme } from '../../hooks/useTheme';
 
 interface BudgetListProps {
   budgets: Budget[];
@@ -17,6 +18,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 const BudgetList = ({ budgets, categories, onEdit, onDelete, onAdd }: BudgetListProps) => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const { theme } = useTheme();
 
   const getCategoryInfo = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId);
@@ -31,6 +33,135 @@ const BudgetList = ({ budgets, categories, onEdit, onDelete, onAdd }: BudgetList
   const totalSpent = budgets.reduce((sum, b) => sum + (b.spent || 0), 0);
   const totalRemaining = totalBudgeted - totalSpent;
   const overBudgetCount = budgets.filter(b => (b.spent || 0) > b.amount).length;
+
+  {/* CYBERPUNK THEME */}
+  if (theme === 'cyberpunk') {
+    const cpFont: React.CSSProperties = { fontFamily: "'Courier New', Courier, monospace" };
+    return (
+      <div style={{ ...cpFont, color: '#00FF41' }} className="space-y-4 animate-fade-in">
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '18px', letterSpacing: '0.08em' }}>[BUDGETS]</div>
+            <div style={{ fontSize: '11px', color: '#008F11', letterSpacing: '0.06em' }}>
+              BUDGET_COUNT: {budgets.length}
+            </div>
+          </div>
+          <button onClick={onAdd} className="btn-primary text-sm">+ ADD_BUDGET</button>
+        </div>
+
+        {/* Over-budget alert */}
+        {overBudgetCount > 0 && (
+          <div style={{ border: '1px solid rgba(255,0,64,0.4)', background: 'rgba(255,0,64,0.05)', padding: '10px 14px', color: '#FF0040', fontSize: '12px', letterSpacing: '0.06em' }}>
+            !! WARNING: {overBudgetCount} BUDGET{overBudgetCount > 1 ? 'S' : ''} EXCEED_LIMIT !!
+          </div>
+        )}
+
+        {/* Summary */}
+        {budgets.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            {[
+              { label: 'BUDGETED', value: totalBudgeted, color: '#00FFFF' },
+              { label: 'SPENT', value: totalSpent, color: '#FF0040' },
+              { label: 'REMAINING', value: Math.abs(totalRemaining), color: totalRemaining >= 0 ? '#00FF41' : '#FF0040' },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.2)', padding: '10px' }}>
+                <div style={{ color: '#008F11', fontSize: '9px', letterSpacing: '0.08em', marginBottom: '4px' }}>{label}</div>
+                <div style={{ color, fontSize: '14px', fontWeight: 'bold' }}>{formatCurrency(value)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {budgets.length === 0 ? (
+          <div style={{ color: '#008F11', padding: '24px', textAlign: 'center', border: '1px solid rgba(0,255,65,0.2)' }}>
+            NO_BUDGETS_CONFIGURED // ADD_FIRST_BUDGET
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '8px', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+            {budgets.map((budget) => {
+              const spent = budget.spent || 0;
+              const remaining = budget.amount - spent;
+              const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+              const isOverBudget = percentage > 100;
+              const isWarning = percentage >= 80 && !isOverBudget;
+              const { name } = getCategoryInfo(budget.categoryId);
+              const nameUpper = name.toUpperCase().replace(/\s+/g, '_');
+              const statusTag = isOverBudget ? '[MAX_LIMIT]' : isWarning ? '[WARNING]' : '[OPTIMAL]';
+              const statusColor = isOverBudget ? '#FF0040' : isWarning ? '#FFFF00' : '#00FF41';
+
+              // 10-segment bar
+              const filledCount = Math.min(Math.round(percentage / 10), 10);
+              return (
+                <div
+                  key={budget.id}
+                  style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '12px' }}
+                  className="group"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div>
+                      <div style={{ color: '#00FF41', fontSize: '13px', letterSpacing: '0.06em', fontWeight: 'bold' }}>
+                        {nameUpper}
+                      </div>
+                      <div style={{ color: '#008F11', fontSize: '10px' }}>
+                        {MONTH_NAMES[budget.month - 1].toUpperCase()} {budget.year}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', opacity: 0 }} className="group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => onEdit(budget)} style={{ background: 'transparent', border: '1px solid rgba(0,255,65,0.3)', color: '#00CC33', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>EDIT</button>
+                      <button onClick={() => setDeleteTarget(budget.id)} style={{ background: 'transparent', border: '1px solid rgba(255,0,64,0.3)', color: '#FF0040', padding: '2px 6px', fontSize: '10px', cursor: 'pointer', fontFamily: 'inherit' }}>DEL</button>
+                    </div>
+                  </div>
+
+                  {/* Spend info */}
+                  <div style={{ fontSize: '11px', marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#00CC33' }}>SPENT: {formatCurrency(spent)}</span>
+                    <span style={{ color: '#008F11' }}>OF: {formatCurrency(budget.amount)}</span>
+                  </div>
+
+                  {/* Segmented bar */}
+                  <div className="cp-seg-bar">
+                    {Array.from({ length: 10 }).map((_, i) => {
+                      const filled = i < filledCount;
+                      const cls = filled
+                        ? isOverBudget ? 'cp-seg filled-red'
+                          : isWarning ? 'cp-seg filled-yellow'
+                          : 'cp-seg filled-green'
+                        : 'cp-seg empty';
+                      return <div key={i} className={cls} />;
+                    })}
+                  </div>
+
+                  {/* Status */}
+                  <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: statusColor, fontSize: '11px', border: `1px solid ${statusColor}40`, padding: '1px 6px' }}>
+                      {statusTag}
+                    </span>
+                    <span style={{ fontSize: '10px', color: '#008F11' }}>
+                      [{percentage.toFixed(0)}%]
+                    </span>
+                  </div>
+                  <div style={{ marginTop: '4px', fontSize: '11px', color: remaining >= 0 ? '#00CC33' : '#FF0040' }}>
+                    {remaining >= 0 ? `REMAINING: ${formatCurrency(remaining)}` : `OVER: ${formatCurrency(Math.abs(remaining))}`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <ConfirmDialog
+          isOpen={deleteTarget !== null}
+          title="Delete budget"
+          message="This budget will be permanently deleted."
+          confirmLabel="Delete"
+          onConfirm={() => { if (deleteTarget) onDelete(deleteTarget); }}
+          onCancel={() => setDeleteTarget(null)}
+          danger
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">
