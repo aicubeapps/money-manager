@@ -58,7 +58,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
           : { accountId, ...(categoryId ? { categoryId } : {}) }),
       });
       await updateRecurringRule(rule.id, {
-        nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth),
+        nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth, rule.dayOfWeek),
         lastCreatedDate: new Date().toISOString().split('T')[0],
       });
       toast.success('Transaction added from recurring rule');
@@ -74,7 +74,7 @@ const Header = ({ toggleSidebar }: HeaderProps) => {
     setActioningId(rule.id);
     try {
       await updateRecurringRule(rule.id, {
-        nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth),
+        nextDueDate: calculateNextDueDate(rule.nextDueDate, rule.frequency, rule.dayOfMonth, rule.dayOfWeek),
       });
       toast.info('Recurring transaction skipped');
     } catch (err) {

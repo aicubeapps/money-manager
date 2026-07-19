@@ -1,4 +1,5 @@
-import { addDays, addMonths, addYears, lastDayOfMonth, setDate, format, parseISO } from 'date-fns';
+import { addDays, addMonths, addYears, lastDayOfMonth, setDate, format, parseISO, nextDay } from 'date-fns';
+import type { Day } from 'date-fns';
 import type { RecurringFrequency, RecurringRule } from '../types';
 
 const ISO_DATE_FORMAT = 'yyyy-MM-dd';
@@ -16,7 +17,10 @@ const clampToMonthEnd = (date: Date, dayOfMonth: number): Date => {
 export const calculateNextDueDate = (
   currentDueDate: string,
   frequency: RecurringFrequency,
-  dayOfMonth?: number
+  dayOfMonth?: number,
+  // 0-6, Sunday-Saturday — matches date-fns/native Date.getDay(), not the
+  // ISO week (which starts Monday=1). Only meaningful for 'weekly'.
+  dayOfWeek?: number
 ): string => {
   const current = parseISO(currentDueDate);
   let next: Date;
@@ -26,7 +30,10 @@ export const calculateNextDueDate = (
       next = addDays(current, 1);
       break;
     case 'weekly':
-      next = addDays(current, 7);
+      // Older rules created before dayOfWeek existed have it undefined —
+      // fall back to the original blind +7-days behavior so they keep
+      // recurring on whatever weekday they already landed on, unchanged.
+      next = typeof dayOfWeek === 'number' ? nextDay(current, dayOfWeek as Day) : addDays(current, 7);
       break;
     case 'monthly':
       next = dayOfMonth

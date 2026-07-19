@@ -25,6 +25,7 @@ const transactionSchema = z
     isRecurring: z.boolean().optional(),
     recurringFrequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
     recurringDayOfMonth: z.number().optional(),
+    recurringDayOfWeek: z.number().min(0).max(6).optional(),
     recurringStartDate: z.string().optional(),
   })
   .refine(
@@ -63,6 +64,13 @@ const transactionSchema = z
       return true;
     },
     { message: 'Day of month must be between 1 and 31', path: ['recurringDayOfMonth'] }
+  )
+  .refine(
+    (data) => {
+      if (!data.isRecurring || data.recurringFrequency !== 'weekly') return true;
+      return typeof data.recurringDayOfWeek === 'number';
+    },
+    { message: 'Day of week is required', path: ['recurringDayOfWeek'] }
   );
 
 type FormData = z.infer<typeof transactionSchema>;
@@ -75,6 +83,10 @@ interface TransactionFormProps {
   onSave: (data: any) => void;
   onCancel: () => void;
 }
+
+// Index = Date.getDay() convention (0=Sunday..6=Saturday), matching
+// recurringDates.ts / date-fns nextDay(), not the ISO week (Monday=1).
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const TYPE_OPTIONS = [
   { value: 'expense', label: '💸 Expense', color: 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' },
@@ -212,6 +224,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   const dateValue = watch('date');
   const recurringStartDate = watch('recurringStartDate');
   const recurringDayOfMonth = watch('recurringDayOfMonth');
+  const recurringDayOfWeek = watch('recurringDayOfWeek');
 
   // Default the recurrence start date to the transaction's own date the first
   // time the toggle is turned on, without overwriting a value the user already set.
@@ -233,6 +246,16 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
       if (anchor) setValue('recurringDayOfMonth', new Date(anchor).getDate());
     }
   }, [isRecurring, recurringFrequency, recurringStartDate, dateValue, recurringDayOfMonth, setValue]);
+
+  // Default "day of week" to the weekday of the recurrence start date, only
+  // once weekly is selected and only if not already set — same pattern as
+  // the day-of-month default above.
+  useEffect(() => {
+    if (isRecurring && recurringFrequency === 'weekly' && typeof recurringDayOfWeek !== 'number') {
+      const anchor = recurringStartDate || dateValue;
+      if (anchor) setValue('recurringDayOfWeek', new Date(anchor).getDay());
+    }
+  }, [isRecurring, recurringFrequency, recurringStartDate, dateValue, recurringDayOfWeek, setValue]);
 
   // Fetch tags once when the form opens
   useEffect(() => {
@@ -331,6 +354,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
           data.recurringFrequency === 'monthly' || data.recurringFrequency === 'yearly'
             ? data.recurringDayOfMonth
             : undefined,
+        dayOfWeek: data.recurringFrequency === 'weekly' ? data.recurringDayOfWeek : undefined,
         startDate: data.recurringStartDate,
       };
     }
@@ -690,6 +714,31 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
                     />
                     {errors.recurringDayOfMonth && (
                       <p className="text-red-500 text-xs mt-1">{errors.recurringDayOfMonth.message}</p>
+                    )}
+                  </div>
+                )}
+
+                {recurringFrequency === 'weekly' && (
+                  <div>
+                    <label className="form-label">Day of week</label>
+                    <div className="grid grid-cols-7 gap-1">
+                      {WEEKDAY_LABELS.map((label, dayIndex) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => setValue('recurringDayOfWeek', dayIndex)}
+                          className={`py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            recurringDayOfWeek === dayIndex
+                              ? 'bg-primary-500 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {errors.recurringDayOfWeek && (
+                      <p className="text-red-500 text-xs mt-1">{errors.recurringDayOfWeek.message}</p>
                     )}
                   </div>
                 )}

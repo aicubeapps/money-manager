@@ -17,6 +17,10 @@ import type { RecurringRule, RecurringFrequency, Tag, TransactionType } from '..
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
+// Index = Date.getDay() convention (0=Sunday..6=Saturday), matching
+// recurringDates.ts / date-fns nextDay(), not the ISO week (Monday=1).
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 type EditFormState = {
   type: TransactionType;
   amount: string;
@@ -26,6 +30,7 @@ type EditFormState = {
   tagId: string;
   frequency: RecurringFrequency;
   dayOfMonth: string;
+  dayOfWeek: number | null;
   startDate: string;
   nextDueDate: string;
 };
@@ -39,6 +44,7 @@ const toEditFormState = (rule: RecurringRule): EditFormState => ({
   tagId: rule.templateTransaction.tags?.[0] || '',
   frequency: rule.frequency,
   dayOfMonth: rule.dayOfMonth ? String(rule.dayOfMonth) : '',
+  dayOfWeek: typeof rule.dayOfWeek === 'number' ? rule.dayOfWeek : null,
   startDate: rule.startDate,
   nextDueDate: rule.nextDueDate,
 });
@@ -136,6 +142,12 @@ const RecurringRulesList = () => {
       return;
     }
 
+    const isWeekly = editForm.frequency === 'weekly';
+    if (isWeekly && editForm.dayOfWeek === null) {
+      toast.error('Select a day of the week');
+      return;
+    }
+
     setSaving(true);
     try {
       await updateRecurringRule(editingRule.id, {
@@ -149,6 +161,7 @@ const RecurringRulesList = () => {
         },
         frequency: editForm.frequency,
         dayOfMonth,
+        dayOfWeek: isWeekly ? editForm.dayOfWeek! : undefined,
         startDate: editForm.startDate,
         nextDueDate: editForm.nextDueDate,
       });
@@ -370,6 +383,28 @@ const RecurringRulesList = () => {
                     onChange={(e) => setEditForm({ ...editForm, dayOfMonth: e.target.value })}
                     className="form-input"
                   />
+                </div>
+              )}
+
+              {editForm.frequency === 'weekly' && (
+                <div>
+                  <label className="form-label">Day of week</label>
+                  <div className="grid grid-cols-7 gap-1">
+                    {WEEKDAY_LABELS.map((label, dayIndex) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, dayOfWeek: dayIndex })}
+                        className={`py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          editForm.dayOfWeek === dayIndex
+                            ? 'bg-primary-500 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
