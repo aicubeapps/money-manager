@@ -177,12 +177,17 @@ const RecurringRulesList = () => {
           accountId: editForm.accountId,
           categoryId: editForm.categoryId,
           description: editForm.description,
-          tags: editForm.tagId ? [editForm.tagId] : undefined,
+          // [] instead of undefined: Firestore rejects undefined in nested objects
+          // and sanitizeFirestoreData only strips top-level undefined values.
+          tags: editForm.tagId ? [editForm.tagId] : [],
         },
         frequency: editForm.frequency,
-        dayOfMonth,
-        weekOfMonth: isMonthlyWeekPos ? (editForm.weekOfMonth as MonthlyWeekPosition) : undefined,
-        dayOfWeek: isWeekly || isMonthlyWeekPos ? editForm.dayOfWeek! : undefined,
+        // null (not undefined) for fields that should be cleared when switching
+        // modes — sanitizeFirestoreData strips undefined, leaving stale Firestore
+        // values; null is written and overwrites the old value.
+        dayOfMonth: dayOfMonth ?? null,
+        weekOfMonth: isMonthlyWeekPos ? (editForm.weekOfMonth as MonthlyWeekPosition) : null,
+        dayOfWeek: isWeekly || isMonthlyWeekPos ? editForm.dayOfWeek! : null,
         startDate: editForm.startDate,
         nextDueDate: editForm.nextDueDate,
       });

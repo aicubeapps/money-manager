@@ -24,9 +24,14 @@ type RecurringRuleCreateInput = {
   isActive?: boolean;
 };
 
-type RecurringRuleUpdateInput = Partial<
-  Omit<RecurringRule, 'id' | 'userId' | 'createdAt'>
->;
+type RecurringRuleUpdateInput =
+  Partial<Omit<RecurringRule, 'id' | 'userId' | 'createdAt' | 'dayOfMonth' | 'weekOfMonth' | 'dayOfWeek'>> & {
+    // null explicitly clears these optional fields in Firestore (undefined would
+    // be stripped by sanitizeFirestoreData and leave stale values in the document).
+    dayOfMonth?: number | null;
+    weekOfMonth?: MonthlyWeekPosition | null;
+    dayOfWeek?: number | null;
+  };
 
 const sanitizeFirestoreData = (data: Record<string, unknown>) => {
   const cleaned: Record<string, unknown> = {};
