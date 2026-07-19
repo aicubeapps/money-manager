@@ -220,7 +220,7 @@ const ReportsPage = () => {
             </div>
 
             {/* CHANGE 1: Summary cards — .card + gradient, matching SummaryCards style */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-col gap-3">
               <div className="card p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Income</span>
