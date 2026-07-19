@@ -23,6 +23,15 @@ const PERIODS = [
   { value: 'yearly', label: 'This Year' },
 ];
 
+// Report period labels ('weekly' etc.) don't match TimeView keys ('week' etc.).
+// getDateRange falls through to its default (today) for any unrecognised key.
+const PERIOD_TO_VIEW: Record<string, TimeView> = {
+  weekly: 'week',
+  monthly: 'month',
+  quarterly: 'quarter',
+  yearly: 'year',
+};
+
 const ReportsPage = () => {
   const formatCurrency = useFormatCurrency();
   const { currentUser } = useAuth();
@@ -35,7 +44,7 @@ const ReportsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const handleGenerate = () => {
-    const view = selectedPeriod as TimeView;
+    const view = PERIOD_TO_VIEW[selectedPeriod] ?? 'month';
     const now = new Date();
     const { start, end } = getDateRange(view, now);
     const reportData = generateReport(
