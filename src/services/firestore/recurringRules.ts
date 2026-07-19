@@ -9,7 +9,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import type { RecurringRule, RecurringFrequency } from '../../types';
+import type { RecurringRule, RecurringFrequency, MonthlyWeekPosition } from '../../types';
 
 const COLLECTION = 'recurringRules';
 
@@ -17,6 +17,7 @@ type RecurringRuleCreateInput = {
   templateTransaction: RecurringRule['templateTransaction'];
   frequency: RecurringFrequency;
   dayOfMonth?: number;
+  weekOfMonth?: MonthlyWeekPosition;
   dayOfWeek?: number;
   startDate: string;
   nextDueDate: string;

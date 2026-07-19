@@ -125,6 +125,9 @@ export interface Report {
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
+/** Only meaningful when frequency === 'monthly' and weekOfMonth is set. */
+export type MonthlyWeekPosition = 'first' | 'second' | 'third' | 'fourth' | 'last';
+
 export interface RecurringRule {
   id: string;
   userId: string;
@@ -141,9 +144,18 @@ export interface RecurringRule {
     toAccountId?: string;
   };
   frequency: RecurringFrequency;
+  // Monthly sub-modes are mutually exclusive:
+  //   "Specific date"  → dayOfMonth is set, weekOfMonth is absent.
+  //   "Nth weekday"    → weekOfMonth + dayOfWeek are both set, dayOfMonth is absent.
   dayOfMonth?: number;
-  /** 0-6, Sunday-Saturday (matches date-fns/native Date.getDay(), not the
-   * ISO week where Monday=1). Only meaningful when frequency === 'weekly'. */
+  /** Which week of the month. Only meaningful when frequency === 'monthly'. */
+  weekOfMonth?: MonthlyWeekPosition;
+  /**
+   * 0-6, Sunday-Saturday (matches date-fns/native Date.getDay(), not ISO week).
+   * Dual-use field:
+   *   - frequency === 'weekly'  → "recur on this weekday every week"
+   *   - frequency === 'monthly' + weekOfMonth set → "Nth occurrence of this weekday in the month"
+   */
   dayOfWeek?: number;
   startDate: string;
   nextDueDate: string;

@@ -1,6 +1,6 @@
-import { addDays, addMonths, addYears, lastDayOfMonth, setDate, format, parseISO, nextDay } from 'date-fns';
+import { addDays, addMonths, addYears, lastDayOfMonth, setDate, startOfMonth, format, parseISO, nextDay } from 'date-fns';
 import type { Day } from 'date-fns';
-import type { RecurringFrequency, RecurringRule } from '../types';
+import type { RecurringFrequency, RecurringRule, MonthlyWeekPosition } from '../types';
 
 const ISO_DATE_FORMAT = 'yyyy-MM-dd';
 
@@ -18,9 +18,11 @@ export const calculateNextDueDate = (
   currentDueDate: string,
   frequency: RecurringFrequency,
   dayOfMonth?: number,
-  // 0-6, Sunday-Saturday — matches date-fns/native Date.getDay(), not the
-  // ISO week (which starts Monday=1). Only meaningful for 'weekly'.
-  dayOfWeek?: number
+  // 0-6, Sunday-Saturday — matches date-fns/native Date.getDay(). Dual-use:
+  // for 'weekly' = recur on this weekday; for 'monthly' + weekOfMonth = Nth
+  // occurrence of this weekday in the month.
+  dayOfWeek?: number,
+  weekOfMonth?: MonthlyWeekPosition
 ): string => {
   const current = parseISO(currentDueDate);
   let next: Date;
@@ -36,9 +38,28 @@ export const calculateNextDueDate = (
       next = typeof dayOfWeek === 'number' ? nextDay(current, dayOfWeek as Day) : addDays(current, 7);
       break;
     case 'monthly':
-      next = dayOfMonth
-        ? clampToMonthEnd(addMonths(current, 1), dayOfMonth)
-        : addMonths(current, 1);
+      if (weekOfMonth !== undefined && typeof dayOfWeek === 'number') {
+        // "Nth weekday of next month" sub-mode (e.g. third Wednesday, last Friday).
+        const nextMonthDate = addMonths(current, 1);
+        const som = startOfMonth(nextMonthDate);
+        // Distance from the 1st to the first occurrence of the target weekday.
+        const diff = (dayOfWeek - som.getDay() + 7) % 7;
+        const firstOccurrence = addDays(som, diff);
+
+        if (weekOfMonth === 'last') {
+          // Walk backwards from end of month to the target weekday.
+          const eom = lastDayOfMonth(nextMonthDate);
+          const backDiff = (eom.getDay() - dayOfWeek + 7) % 7;
+          next = addDays(eom, -backDiff);
+        } else {
+          const weekOffset = { first: 0, second: 1, third: 2, fourth: 3 }[weekOfMonth];
+          next = addDays(firstOccurrence, weekOffset * 7);
+        }
+      } else if (dayOfMonth) {
+        next = clampToMonthEnd(addMonths(current, 1), dayOfMonth);
+      } else {
+        next = addMonths(current, 1);
+      }
       break;
     case 'yearly':
       // Same month-end clamping applies here, e.g. a Feb 29 rule on a non-leap year.
