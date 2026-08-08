@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { HiExclamation, HiX } from 'react-icons/hi';
 
 interface ConfirmDialogProps {
@@ -7,7 +8,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   alternativeLabel?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
   onAlternative?: () => void;
   danger?: boolean;
@@ -25,7 +26,20 @@ const ConfirmDialog = ({
   onAlternative,
   danger = false,
 }: ConfirmDialogProps) => {
+  const [isConfirming, setIsConfirming] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleConfirm = async () => {
+    if (isConfirming) return;
+    setIsConfirming(true);
+    try {
+      await onConfirm();
+    } finally {
+      setIsConfirming(false);
+    }
+    onCancel();
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
@@ -56,13 +70,17 @@ const ConfirmDialog = ({
               {cancelLabel}
             </button>
             <button
-              onClick={() => { onConfirm(); onCancel(); }}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 justify-center ${
+              onClick={handleConfirm}
+              disabled={isConfirming}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 active:scale-95 justify-center inline-flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 ${
                 danger
                   ? 'bg-red-500 hover:bg-red-600 text-white'
                   : 'bg-primary-500 hover:bg-primary-600 text-white'
               }`}
             >
+              {isConfirming && (
+                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              )}
               {confirmLabel}
             </button>
           </div>
