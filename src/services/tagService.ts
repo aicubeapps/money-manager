@@ -15,18 +15,38 @@ const TAGS_COLLECTION = 'tags';
 
 // --- Tags ---
 
+// Firestore's addDoc/updateDoc reject `undefined` field values outright —
+// the whole write throws, not just that field — so optional fields left
+// unset (e.g. defaultAccountId/defaultCategoryId with "None" selected) must
+// be stripped before writing. Same pattern as accountService.ts /
+// recurringRules.ts.
+const sanitizeFirestoreData = (data: Record<string, unknown>) => {
+  const cleaned: Record<string, unknown> = {};
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  });
+
+  return cleaned;
+};
+
 export const createTag = async (
   userId: string,
   data: Omit<Tag, 'id' | 'userId' | 'createdAt' | 'excludeFromBudget'> & { excludeFromBudget?: boolean }
 ) => {
   const now = new Date();
   const excludeFromBudget = data.excludeFromBudget ?? false;
-  const docRef = await addDoc(collection(db, TAGS_COLLECTION), {
-    ...data,
-    excludeFromBudget,
-    userId,
-    createdAt: now,
-  });
+  const docRef = await addDoc(
+    collection(db, TAGS_COLLECTION),
+    sanitizeFirestoreData({
+      ...data,
+      excludeFromBudget,
+      userId,
+      createdAt: now,
+    })
+  );
   return { id: docRef.id, ...data, excludeFromBudget, userId, createdAt: now } as Tag;
 };
 
@@ -35,7 +55,7 @@ export const updateTag = async (
   data: Partial<Omit<Tag, 'id' | 'userId' | 'createdAt'>>
 ) => {
   const docRef = doc(db, TAGS_COLLECTION, tagId);
-  await updateDoc(docRef, { ...data });
+  await updateDoc(docRef, sanitizeFirestoreData({ ...data }));
 };
 
 export const deleteTag = async (tagId: string) => {

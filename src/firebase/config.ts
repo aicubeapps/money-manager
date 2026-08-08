@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import {
   initializeFirestore,
   persistentLocalCache,
@@ -19,6 +19,16 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+// Persist the auth session in localStorage (survives browser restarts, tab
+// closes, and PWA relaunches) instead of Firebase's sessionStorage default.
+// Set at module init, before any sign-in call can occur, so it's always in
+// effect by the time the user interacts with the app. Doesn't affect
+// onAuthStateChanged — that still fires the same way, just from a
+// longer-lived stored session.
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error('Error setting auth persistence:', error);
+});
 
 // Modern persistent cache with multi-tab support
 export const db = initializeFirestore(app, {

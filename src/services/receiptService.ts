@@ -10,9 +10,15 @@ export const MAX_RECEIPT_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 // persisted (the underlying Drive access token is in-memory only too).
 const objectUrlCache = new Map<string, string>();
 
+// Unified 10MB limit for both images and PDFs, rather than a higher
+// PDF-specific limit — receipt PDFs are typically single-page scans well
+// under this size, so a differentiated limit would add complexity without
+// much real-world benefit.
 export const validateReceiptFile = (file: File): string | null => {
-  if (!file.type.startsWith('image/')) return 'Please select an image file.';
-  if (file.size > MAX_RECEIPT_SIZE_BYTES) return 'Image is too large (max 10MB).';
+  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+    return 'Please select an image or PDF file.';
+  }
+  if (file.size > MAX_RECEIPT_SIZE_BYTES) return 'File is too large (max 10MB).';
   return null;
 };
 

@@ -154,7 +154,7 @@ const QuickAddModal = ({
 
         {topTags.length > 0 && (
           <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="form-label">
               Quick tags
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -177,7 +177,7 @@ const QuickAddModal = ({
         )}
 
         <div>
-          <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="form-label">
             Amount
           </label>
 
@@ -186,51 +186,21 @@ const QuickAddModal = ({
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="
-                 w-full
-                rounded-xl
-                border
-                border-gray-300
-                dark:border-gray-700
-                bg-white
-                dark:bg-gray-800
-                text-gray-900
-                dark:text-gray-100
-                px-3
-                py-2.5
-                focus:outline-none
-                focus:ring-2
-                focus:ring-blue-500
-              "
+            className="form-input"
             placeholder="0.00"
             autoFocus
             />
            </div>
 
         <div>
-          <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="form-label">
             Account
           </label>
 
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            className="
-              w-full
-              rounded-xl
-              border
-              border-gray-300
-              dark:border-gray-700
-              bg-white
-              dark:bg-gray-800
-              text-gray-900
-              dark:text-gray-100
-              px-3
-              py-2.5
-              focus:outline-none
-              focus:ring-2
-              focus:ring-blue-500
-            "
+            className="form-input"
           >
             <option value="">
               🏦 Select Account
@@ -248,29 +218,14 @@ const QuickAddModal = ({
         </div>
 
         <div>
-          <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="form-label">
             Category
           </label>
 
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="
-              w-full
-              rounded-xl
-              border
-              border-gray-300
-              dark:border-gray-700
-              bg-white
-              dark:bg-gray-800
-              text-gray-900
-              dark:text-gray-100
-              px-3
-              py-2.5
-              focus:outline-none
-              focus:ring-2
-              focus:ring-blue-500
-            "
+            className="form-input"
           >
             <option value="">
               📂 Select Category
@@ -293,15 +248,7 @@ const QuickAddModal = ({
 
         <button
           onClick={onClose}
-          className="
-            rounded-xl
-            bg-red-500
-            hover:bg-red-600
-            text-white
-            px-5
-            py-2.5
-            transition-colors
-          "
+          className="btn-secondary"
         >
           Cancel
         </button>
@@ -309,16 +256,7 @@ const QuickAddModal = ({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="
-            rounded-xl
-            bg-green-600
-            hover:bg-green-700
-            text-white
-            px-5
-            py-2.5
-            transition-colors
-            disabled:opacity-50
-          "
+          className="btn-primary disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>

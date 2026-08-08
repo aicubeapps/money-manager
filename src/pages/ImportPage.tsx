@@ -169,7 +169,7 @@ const ImportPage = () => {
       const next = { ...prev };
       for (const row of importRows) {
         if (!selectedRows.has(row.rowIndex) || row.excluded) continue;
-        next[row.rowIndex] = { tagId: tag.id, categoryId: tag.defaultCategoryId };
+        next[row.rowIndex] = { tagId: tag.id, categoryId: tag.defaultCategoryId ?? undefined };
       }
       return next;
     });

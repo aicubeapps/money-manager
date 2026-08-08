@@ -41,7 +41,7 @@ const LoginPage = () => {
         {theme === 'dark' ? (
           <HiOutlineSun className="w-5 h-5 text-amber-400" />
         ) : (
-          <HiOutlineMoon className="w-5 h-5 text-gray-600" />
+          <HiOutlineMoon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
         )}
       </button>
 

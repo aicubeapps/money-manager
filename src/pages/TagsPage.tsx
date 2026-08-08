@@ -168,8 +168,11 @@ const TagsPage = () => {
       const payload = {
         name: form.name.trim(),
         color: form.color,
-        defaultAccountId: form.defaultAccountId || undefined,
-        defaultCategoryId: form.defaultCategoryId || undefined,
+        // null (not undefined) so clearing a default back to "None" during
+        // an edit actually overwrites the old value in Firestore instead of
+        // being stripped and leaving it unchanged.
+        defaultAccountId: form.defaultAccountId || null,
+        defaultCategoryId: form.defaultCategoryId || null,
         importKeywords: importKeywords.length > 0 ? importKeywords : undefined,
         excludeFromBudget: form.excludeFromBudget,
       };
@@ -202,8 +205,8 @@ const TagsPage = () => {
     }
   };
 
-  const accountName = (id?: string) => (id ? accounts.find((a) => a.id === id)?.name : undefined);
-  const categoryName = (id?: string) => (id ? categories.find((c) => c.id === id)?.name : undefined);
+  const accountName = (id?: string | null) => (id ? accounts.find((a) => a.id === id)?.name : undefined);
+  const categoryName = (id?: string | null) => (id ? categories.find((c) => c.id === id)?.name : undefined);
 
   if (loading) return <LoadingSpinner message="Loading tags..." />;
 
@@ -226,11 +229,6 @@ const TagsPage = () => {
           icon="🏷️"
           title="No tags yet"
           description="Create a tag to speed up categorizing transactions."
-          action={
-            <button onClick={handleAdd} className="btn-primary text-sm">
-              <HiPlus className="w-4 h-4" /> Add Tag
-            </button>
-          }
         />
       ) : (
         <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">

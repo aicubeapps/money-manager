@@ -51,8 +51,10 @@ export interface Tag {
   userId: string;
   name: string;
   color?: string;
-  defaultAccountId?: string;
-  defaultCategoryId?: string;
+  // null (not just undefined) explicitly clears these in Firestore when
+  // editing a tag back to "None" — see tagService.ts's sanitizeFirestoreData.
+  defaultAccountId?: string | null;
+  defaultCategoryId?: string | null;
   importKeywords?: string[];
   excludeFromBudget: boolean;
   createdAt: Date;
@@ -79,6 +81,10 @@ export interface Transaction {
    * valid value here — it's what TransactionForm writes to explicitly
    * clear a previously-attached receipt via updateDoc. */
   receiptDriveFileId?: string | null;
+  /** MIME type of the attached receipt (e.g. 'image/jpeg', 'application/pdf'),
+   * stored alongside receiptDriveFileId so the viewer knows how to render it
+   * without a separate Drive metadata fetch. null clears it the same way. */
+  receiptMimeType?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

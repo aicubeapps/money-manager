@@ -200,11 +200,6 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
           icon="🎯"
           title="No budgets set"
           description="Set an overall monthly budget and split it across categories."
-          action={
-            <button onClick={onAdd} className="btn-primary text-sm">
-              <HiPlus className="w-4 h-4" /> Create your first budget
-            </button>
-          }
         />
       ) : (
         <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">

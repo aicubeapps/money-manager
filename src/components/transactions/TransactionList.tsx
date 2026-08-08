@@ -42,7 +42,7 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
   const [dateTo, setDateTo] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
-  const [viewingReceiptFileId, setViewingReceiptFileId] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<{ fileId: string; mimeType?: string | null } | null>(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -331,11 +331,6 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
           icon="💸"
           title="No transactions yet"
           description={searchTerm ? 'No transactions match your search.' : compact ? 'No transactions match this filter.' : 'Start recording your income and expenses.'}
-          action={!searchTerm && !compact ? (
-            <button onClick={onAdd} className="btn-primary text-sm">
-              <HiPlus className="w-4 h-4" /> Add your first transaction
-            </button>
-          ) : undefined}
         />
       ) : (
         <div className="space-y-4">
@@ -400,7 +395,7 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setViewingReceiptFileId(transaction.receiptDriveFileId!);
+                              setViewingReceipt({ fileId: transaction.receiptDriveFileId!, mimeType: transaction.receiptMimeType });
                             }}
                             className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                             title="View receipt"
@@ -449,8 +444,12 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
         danger
       />
 
-      {viewingReceiptFileId && (
-        <ReceiptViewerModal fileId={viewingReceiptFileId} onClose={() => setViewingReceiptFileId(null)} />
+      {viewingReceipt && (
+        <ReceiptViewerModal
+          fileId={viewingReceipt.fileId}
+          mimeType={viewingReceipt.mimeType}
+          onClose={() => setViewingReceipt(null)}
+        />
       )}
     </div>
   );

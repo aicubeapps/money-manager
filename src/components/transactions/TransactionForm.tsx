@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { HiX, HiOutlineCamera, HiOutlinePhotograph, HiOutlineTrash } from 'react-icons/hi';
+import { HiX, HiOutlineCamera, HiOutlinePhotograph, HiOutlineTrash, HiOutlineDocumentText } from 'react-icons/hi';
 import type { Transaction, Account, Category, CategoryType, Tag, RecurringFrequency, MonthlyWeekPosition } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { getTags, createTag } from '../../services/tagService';
@@ -141,6 +141,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   const [driveReady, setDriveReady] = useState(isDriveConnected());
   const [connectingDrive, setConnectingDrive] = useState(false);
   const [receiptFileId, setReceiptFileId] = useState<string | null>(transaction?.receiptDriveFileId || null);
+  const [receiptMimeType, setReceiptMimeType] = useState<string | null>(transaction?.receiptMimeType || null);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [receiptUploading, setReceiptUploading] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -192,6 +193,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
       const previousFileId = receiptFileId;
       const newFileId = await uploadReceiptImage(file);
       setReceiptFileId(newFileId);
+      setReceiptMimeType(file.type || null);
       const url = await getReceiptImageUrl(newFileId);
       setReceiptPreviewUrl(url);
       // Replace, not add — delete the old Drive file after the new one is
@@ -211,6 +213,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
     if (!receiptFileId) return;
     const idToDelete = receiptFileId;
     setReceiptFileId(null);
+    setReceiptMimeType(null);
     setReceiptPreviewUrl(null);
     try {
       await deleteReceiptImage(idToDelete);
@@ -382,6 +385,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
     // actually clears the field instead of leaving the old value in place —
     // updateDoc only touches keys present in the payload.
     payload.receiptDriveFileId = receiptFileId || null;
+    payload.receiptMimeType = receiptMimeType || null;
     if (data.isRecurring && data.recurringFrequency && data.recurringStartDate) {
       const isMonthlyWeekPos = data.recurringFrequency === 'monthly' && monthlySubMode === 'week-position';
       payload.recurringRule = {
@@ -616,6 +620,11 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
                 <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-shrink-0 flex items-center justify-center bg-gray-50 dark:bg-gray-700">
                   {receiptUploading ? (
                     <span className="text-xs text-gray-400 animate-pulse">...</span>
+                  ) : receiptMimeType === 'application/pdf' ? (
+                    <div className="flex flex-col items-center gap-0.5 text-red-500 dark:text-red-400">
+                      <HiOutlineDocumentText className="w-6 h-6" />
+                      <span className="text-[9px] font-semibold">PDF</span>
+                    </div>
                   ) : (
                     <img src={receiptPreviewUrl!} alt="Receipt preview" className="w-full h-full object-cover" />
                   )}
@@ -669,7 +678,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               className="hidden"
               onChange={handleReceiptSelect}
             />

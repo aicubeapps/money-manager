@@ -5,11 +5,14 @@ import { isDriveConnected, reconnectDriveSilently } from '../../services/googleD
 
 interface ReceiptViewerModalProps {
   fileId: string;
+  mimeType?: string | null;
   onClose: () => void;
 }
 
-/** Lightweight full-size image lightbox for a receipt stored on Drive. */
-const ReceiptViewerModal = ({ fileId, onClose }: ReceiptViewerModalProps) => {
+/** Lightweight full-size lightbox for a receipt stored on Drive — an image
+ * or a PDF (rendered in an iframe, with a new-tab fallback link since some
+ * mobile browsers don't render PDFs inline in an iframe). */
+const ReceiptViewerModal = ({ fileId, mimeType, onClose }: ReceiptViewerModalProps) => {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +54,21 @@ const ReceiptViewerModal = ({ fileId, onClose }: ReceiptViewerModalProps) => {
         <p className="text-white text-sm text-center max-w-xs">{error}</p>
       ) : !url ? (
         <p className="text-white text-sm">Loading receipt...</p>
+      ) : mimeType === 'application/pdf' ? (
+        <div
+          className="w-full h-full max-w-3xl max-h-[85vh] flex flex-col gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <iframe src={url} title="Receipt PDF" className="flex-1 w-full rounded-lg bg-white" />
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="self-center text-sm text-white/80 hover:text-white hover:underline"
+          >
+            Open PDF in new tab
+          </a>
+        </div>
       ) : (
         <img
           src={url}

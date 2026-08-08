@@ -508,13 +508,6 @@ const AccountList = ({
               ? 'Add your bank accounts, wallets, and credit cards to get started.'
               : 'Archived accounts will appear here.'
           }
-          action={
-            filter === 'active' ? (
-              <button onClick={onAdd} className="btn-primary text-sm">
-                <HiPlus className="w-4 h-4" /> Add Account
-              </button>
-            ) : undefined
-          }
         />
       ) : (
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

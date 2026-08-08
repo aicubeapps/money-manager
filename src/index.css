@@ -76,6 +76,26 @@
 .theme-oled ::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.15);
 }
+/* Modals, dropdowns, and toasts (ConfirmDialog, TransactionForm, TagsPage,
+   BudgetForm, CategoryForm, AccountForm, QuickAddModal, GlobalSearchOverlay,
+   Header's reminders/user popovers, BottomNav's More popover, Toast, etc.)
+   aren't covered by .card — they're identified here by the same dark
+   surface + shadow combination every one of them uses, which excludes
+   incidental same-colored surfaces without a shadow (e.g. filter-tab
+   tracks). Shadows are pointless on true black and cost battery on OLED
+   panels, so they're replaced with the same subtle border .card uses. */
+.theme-oled .dark\:bg-gray-800.shadow-xl,
+.theme-oled .dark\:bg-gray-800.shadow-2xl,
+.theme-oled .dark\:bg-gray-800.shadow-lg,
+.theme-oled .dark\:bg-gray-800.shadow-md,
+.theme-oled .dark\:bg-gray-900.shadow-xl,
+.theme-oled .dark\:bg-gray-900.shadow-2xl,
+.theme-oled .dark\:bg-gray-900.shadow-lg,
+.theme-oled .dark\:bg-gray-900.shadow-md {
+  background-color: #000000 !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
 
 /* ═══════════════════════════════════════════════════════════
    CYBERPUNK TERMINAL THEME

@@ -61,11 +61,6 @@ const CategoryList = ({ categories, onEdit, onDisable, onEnable, onDelete, onAdd
           icon="🏷️"
           title="No categories yet"
           description="Create categories to organize your transactions."
-          action={
-            <button onClick={onAdd} className="btn-primary text-sm">
-              <HiPlus className="w-4 h-4" /> Add Category
-            </button>
-          }
         />
       ) : (
         <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
