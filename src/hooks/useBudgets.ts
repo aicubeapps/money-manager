@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where } from 'firebase/firestore';
+import type { QueryConstraint } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Budget } from '../types';
 import { useAuth } from './useAuth';
@@ -8,17 +9,15 @@ import { subscribeWithRetry } from '../utils/firestoreRetry';
 export const useBudgets = (month?: number, year?: number, refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  // Tracks whose data `budgets` currently holds — see useAccounts.ts for why.
+  const [budgetsOwnerId, setBudgetsOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setBudgets([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) return;
 
-    let conditions: any[] = [where('userId', '==', currentUser.uid)];
+    const conditions: QueryConstraint[] = [where('userId', '==', currentUser.uid)];
     if (month !== undefined && year !== undefined) {
       conditions.push(where('month', '==', month));
       conditions.push(where('year', '==', year));
@@ -38,6 +37,7 @@ export const useBudgets = (month?: number, year?: number, refreshKey = 0) => {
           };
         }) as Budget[];
         setBudgets(data);
+        setBudgetsOwnerId(currentUser.uid);
         setLoading(false);
         setError(null);
       },
@@ -51,5 +51,9 @@ export const useBudgets = (month?: number, year?: number, refreshKey = 0) => {
     return () => unsubscribe();
   }, [currentUser, month, year, refreshKey]);
 
-  return { budgets, loading, error };
+  return {
+    budgets: currentUser && budgetsOwnerId === currentUser.uid ? budgets : [],
+    loading: currentUser ? loading : false,
+    error: currentUser ? error : null,
+  };
 };

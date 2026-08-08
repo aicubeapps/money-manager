@@ -1,15 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ThemeContext } from './ThemeContextCore';
+import type { Theme } from './ThemeContextCore';
 
-export type Theme = 'light' | 'dark' | 'oled' | 'cyberpunk';
-
-interface ThemeContextType {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  /** Kept for backward compat (header quick-toggle): cycles light ↔ dark only. */
-  toggleTheme: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export type { Theme, ThemeContextType } from './ThemeContextCore';
 
 const THEME_CLASSES: Record<Theme, string[]> = {
   light: [],
@@ -34,26 +27,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const setTheme = (t: Theme) => setThemeState(t);
+  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
 
   // Legacy toggle: cycles light ↔ dark; from oled/cyberpunk returns to light.
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setThemeState((prev) => {
       if (prev === 'light') return 'dark';
       if (prev === 'dark') return 'light';
       return 'light';
     });
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ theme, setTheme, toggleTheme }),
+    [theme, setTheme, toggleTheme]
+  );
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
-};
-
-export const useTheme = (): ThemeContextType => {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error('useTheme must be used within a ThemeProvider');
-  return context;
 };

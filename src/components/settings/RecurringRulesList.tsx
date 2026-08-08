@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { HiPencil, HiTrash, HiX } from 'react-icons/hi';
 import {
-  getAllRecurringRules,
+  getRecurringRulesSnapshot,
   updateRecurringRule,
   deleteRecurringRule,
 } from '../../services/firestore/recurringRules';
@@ -65,6 +65,9 @@ const RecurringRulesList = () => {
   const { accounts } = useAccounts();
   const { categories } = useCategories();
   const [rules, setRules] = useState<RecurringRule[]>([]);
+  // Tracks whose data `rules` currently holds, so a stale previous user's
+  // rows are never shown for a currentUser they don't belong to.
+  const [rulesOwnerId, setRulesOwnerId] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -73,28 +76,28 @@ const RecurringRulesList = () => {
   const [monthlySubMode, setMonthlySubMode] = useState<'specific-day' | 'week-position'>('specific-day');
   const [saving, setSaving] = useState(false);
 
-  const fetchRules = async () => {
-    if (!currentUser) {
-      setRules([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await getAllRecurringRules(currentUser.uid);
-      setRules(data);
-    } catch (err) {
-      console.error('Error fetching recurring rules:', err);
-      toast.error('Failed to load recurring rules');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchRules();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!currentUser) return;
+
+    const unsubscribe = getRecurringRulesSnapshot(
+      currentUser.uid,
+      (data) => {
+        setRules(data);
+        setRulesOwnerId(currentUser.uid);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error fetching recurring rules:', err);
+        toast.error('Failed to load recurring rules');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, [currentUser]);
+
+  const displayRules = currentUser && rulesOwnerId === currentUser.uid ? rules : [];
+  const isLoading = currentUser ? loading : false;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -105,7 +108,6 @@ const RecurringRulesList = () => {
     try {
       await updateRecurringRule(rule.id, { isActive: !rule.isActive });
       toast.success(rule.isActive ? 'Recurring rule deactivated' : 'Recurring rule activated');
-      fetchRules();
     } catch (err) {
       console.error('Error updating recurring rule:', err);
       toast.error('Failed to update recurring rule');
@@ -116,7 +118,6 @@ const RecurringRulesList = () => {
     try {
       await deleteRecurringRule(id);
       toast.success('Recurring rule deleted');
-      fetchRules();
     } catch (err) {
       console.error('Error deleting recurring rule:', err);
       toast.error('Failed to delete recurring rule');
@@ -193,7 +194,6 @@ const RecurringRulesList = () => {
       });
       toast.success('Recurring rule updated');
       closeEdit();
-      fetchRules();
     } catch (err) {
       console.error('Error updating recurring rule:', err);
       toast.error('Failed to update recurring rule');
@@ -207,11 +207,11 @@ const RecurringRulesList = () => {
     ? categories.filter((c) => c.active && c.type === (editForm.type === 'expense' ? 'expense' : 'income'))
     : [];
 
-  if (loading) {
+  if (isLoading) {
     return <p className="text-sm text-gray-500 dark:text-gray-400">Loading recurring rules...</p>;
   }
 
-  if (rules.length === 0) {
+  if (displayRules.length === 0) {
     return (
       <EmptyState
         icon="🔁"
@@ -223,7 +223,7 @@ const RecurringRulesList = () => {
 
   return (
     <div className="space-y-3">
-      {rules.map((rule) => (
+      {displayRules.map((rule) => (
         <div
           key={rule.id}
           className={`flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700/50 ${

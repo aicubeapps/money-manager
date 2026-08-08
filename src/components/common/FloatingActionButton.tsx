@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HiPlus } from 'react-icons/hi';
 import QuickAddModal from './QuickAddModal';
-import { subscribeToMoreMenuOpen } from '../layout/BottomNav';
+import { subscribeToMoreMenuOpen } from '../layout/moreMenuStore';
 
 const FloatingActionButton = () => {
   const [isOpen, setIsOpen] = useState(false);

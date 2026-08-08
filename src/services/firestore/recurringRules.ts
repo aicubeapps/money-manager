@@ -8,8 +8,10 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
+import type { Unsubscribe, FirestoreError } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { RecurringRule, RecurringFrequency, MonthlyWeekPosition } from '../../types';
+import { subscribeWithRetry } from '../../utils/firestoreRetry';
 
 const COLLECTION = 'recurringRules';
 
@@ -106,4 +108,27 @@ export const getAllRecurringRules = async (userId: string) => {
     id: docSnap.id,
     ...docSnap.data(),
   })) as RecurringRule[];
+};
+
+// Live-subscribe to all recurring rules (active and inactive) for a user —
+// used by the Settings rules-management list so it stays consistent with the
+// rest of the app's real-time-everywhere pattern instead of a one-time fetch.
+export const getRecurringRulesSnapshot = (
+  userId: string,
+  onNext: (rules: RecurringRule[]) => void,
+  onError: (error: FirestoreError) => void
+): Unsubscribe => {
+  const q = query(collection(db, COLLECTION), where('userId', '==', userId));
+
+  return subscribeWithRetry(
+    q,
+    (snapshot) => {
+      const rules = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as RecurringRule[];
+      onNext(rules);
+    },
+    onError
+  );
 };

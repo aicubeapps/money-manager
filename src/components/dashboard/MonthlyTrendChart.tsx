@@ -20,7 +20,7 @@ const MonthlyTrendChart = ({ data }: MonthlyTrendChartProps) => {
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="month" />
-        <YAxis tickFormatter={(value) => `₹${value/1000}K`} />
+        <YAxis tickFormatter={(value) => formatCurrency(value as number)} />
         <Tooltip formatter={(value) => formatCurrency(value as number)} />
         <Legend />
         <Line type="monotone" dataKey="income" stroke="#22C55E" strokeWidth={2} />

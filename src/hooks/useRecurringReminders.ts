@@ -9,15 +9,13 @@ import { subscribeWithRetry } from '../utils/firestoreRetry';
 export const useRecurringReminders = () => {
   const { currentUser } = useAuth();
   const [dueRules, setDueRules] = useState<RecurringRule[]>([]);
+  // Tracks whose data `dueRules` currently holds — see useAccounts.ts for why.
+  const [dueRulesOwnerId, setDueRulesOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setDueRules([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) return;
 
     const q = query(
       collection(db, 'recurringRules'),
@@ -33,6 +31,7 @@ export const useRecurringReminders = () => {
           ...doc.data(),
         })) as RecurringRule[];
         setDueRules(rules.filter(isDue));
+        setDueRulesOwnerId(currentUser.uid);
         setLoading(false);
         setError(null);
       },
@@ -46,5 +45,9 @@ export const useRecurringReminders = () => {
     return () => unsubscribe();
   }, [currentUser]);
 
-  return { dueRules, loading, error };
+  return {
+    dueRules: currentUser && dueRulesOwnerId === currentUser.uid ? dueRules : [],
+    loading: currentUser ? loading : false,
+    error: currentUser ? error : null,
+  };
 };

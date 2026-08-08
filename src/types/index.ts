@@ -75,8 +75,10 @@ export interface Transaction {
   attachments?: Attachment[];
   /** Google Drive file ID of an attached receipt photo/screenshot, if any.
    * Image bytes live in Drive (dedicated "ExpenseTracker Receipts" folder),
-   * never stored as base64 in Firestore. */
-  receiptDriveFileId?: string;
+   * never stored as base64 in Firestore. null (not just undefined) is a
+   * valid value here — it's what TransactionForm writes to explicitly
+   * clear a previously-attached receipt via updateDoc. */
+  receiptDriveFileId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

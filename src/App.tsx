@@ -1,21 +1,24 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import AccountsPage from './pages/AccountsPage';
-import TransactionsPage from './pages/TransactionsPage';
-import CategoriesPage from './pages/CategoriesPage';
-import BudgetsPage from './pages/BudgetsPage';
-import ReportsPage from './pages/ReportsPage';
-import SettingsPage from './pages/SettingsPage';
-import TagsPage from './pages/TagsPage';
-import AboutPage from './pages/AboutPage';
-import ImportPage from './pages/ImportPage';
+import LoadingSpinner from './components/common/LoadingSpinner';
 import ToastContainer from './components/common/Toast';
+
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const AccountsPage = lazy(() => import('./pages/AccountsPage'));
+const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
+const CategoriesPage = lazy(() => import('./pages/CategoriesPage'));
+const BudgetsPage = lazy(() => import('./pages/BudgetsPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const TagsPage = lazy(() => import('./pages/TagsPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const ImportPage = lazy(() => import('./pages/ImportPage'));
 
 function App() {
   return (
@@ -23,23 +26,25 @@ function App() {
       <AuthProvider>
         <CurrencyProvider>
         <HashRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route element={<ProtectedRoute />}>
-              <Route element={<MainLayout />}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/accounts" element={<AccountsPage />} />
-                <Route path="/transactions" element={<TransactionsPage />} />
-                <Route path="/categories" element={<CategoriesPage />} />
-                <Route path="/budgets" element={<BudgetsPage />} />
-                <Route path="/reports" element={<ReportsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/settings/tags" element={<TagsPage />} />
-                <Route path="/settings/about" element={<AboutPage />} />
-                <Route path="/transactions/import" element={<ImportPage />} />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route element={<MainLayout />}>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/accounts" element={<AccountsPage />} />
+                  <Route path="/transactions" element={<TransactionsPage />} />
+                  <Route path="/categories" element={<CategoriesPage />} />
+                  <Route path="/budgets" element={<BudgetsPage />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/settings/tags" element={<TagsPage />} />
+                  <Route path="/settings/about" element={<AboutPage />} />
+                  <Route path="/transactions/import" element={<ImportPage />} />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
+            </Routes>
+          </Suspense>
           <ToastContainer />
         </HashRouter>
         </CurrencyProvider>

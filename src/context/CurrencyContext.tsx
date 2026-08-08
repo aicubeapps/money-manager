@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { getRates, type RateCache } from '../services/currencyService';
 
 interface CurrencyContextType {
@@ -44,33 +44,36 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (enabled) load();
   }, [enabled, load]);
 
-  const setEnabled = (next: boolean) => {
+  const setEnabled = useCallback((next: boolean) => {
     setEnabledState(next);
     localStorage.setItem(ENABLED_KEY, String(next));
-  };
+  }, []);
 
-  const setTargetCurrency = (code: string) => {
+  const setTargetCurrency = useCallback((code: string) => {
     setTargetCurrencyState(code);
     localStorage.setItem(CODE_KEY, code);
-  };
+  }, []);
 
-  const refresh = () => load(true);
+  const refresh = useCallback(() => load(true), [load]);
+
+  const value = useMemo(
+    () => ({
+      enabled,
+      setEnabled,
+      targetCurrency,
+      setTargetCurrency,
+      fiatRates,
+      cryptoRates,
+      lastUpdated,
+      loading,
+      error,
+      refresh,
+    }),
+    [enabled, setEnabled, targetCurrency, setTargetCurrency, fiatRates, cryptoRates, lastUpdated, loading, error, refresh]
+  );
 
   return (
-    <CurrencyContext.Provider
-      value={{
-        enabled,
-        setEnabled,
-        targetCurrency,
-        setTargetCurrency,
-        fiatRates,
-        cryptoRates,
-        lastUpdated,
-        loading,
-        error,
-        refresh,
-      }}
-    >
+    <CurrencyContext.Provider value={value}>
       {children}
     </CurrencyContext.Provider>
   );

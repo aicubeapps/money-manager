@@ -22,6 +22,17 @@ const formatBackupDate = (date: Date | null) => {
   return date.toLocaleString();
 };
 
+// userData.createdAt is typed as Date but, like other Firestore-sourced
+// fields elsewhere in the app, may still be a raw Firestore Timestamp at
+// runtime if it hasn't been converted on read.
+const toDateSafe = (value: unknown): Date => {
+  if (value instanceof Date) return value;
+  if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  return new Date(value as string | number);
+};
+
 const THEME_OPTIONS: { value: Theme; label: string; icon: string; desc: string }[] = [
   { value: 'light', label: 'Light', icon: '☀️', desc: 'Clean light interface' },
   { value: 'dark', label: 'Dark', icon: '🌙', desc: 'Easy on the eyes' },
@@ -83,7 +94,27 @@ const SettingsPage = () => {
   };
 
   useEffect(() => {
-    if (driveStatus === 'connected') refreshBackups();
+    // Inlined rather than calling the `refreshBackups` closure above: a
+    // function defined outside an effect but invoked inside one is treated
+    // by react-hooks/set-state-in-effect as a synchronous setState call in
+    // the effect body. A same-shaped async function declared *inside* the
+    // effect (as below) is the documented-safe form of this pattern.
+    if (driveStatus !== 'connected') return;
+    let cancelled = false;
+    const load = async () => {
+      setBackupsLoading(true);
+      try {
+        const list = await listBackups();
+        if (!cancelled) setBackups(list);
+      } catch (err) {
+        console.error('Error listing backups:', err);
+        toast.error('Failed to load backup list');
+      } finally {
+        if (!cancelled) setBackupsLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, [driveStatus]);
 
   const handleConnectDrive = async () => {
@@ -266,11 +297,7 @@ const SettingsPage = () => {
               <div className="font-semibold text-gray-900 dark:text-white">{userData.displayName}</div>
               <div className="text-sm text-gray-500 dark:text-gray-400">{userData.email}</div>
               <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                Member since {(
-                  (userData.createdAt as any)?.toDate
-                    ? (userData.createdAt as any).toDate()
-                    : new Date(userData.createdAt)
-                ).toLocaleDateString()}
+                Member since {toDateSafe(userData.createdAt).toLocaleDateString()}
               </div>
             </div>
           </div>

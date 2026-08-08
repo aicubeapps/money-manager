@@ -7,6 +7,7 @@ import { useTags } from '../../hooks/useTags';
 import { updateTransaction } from '../../services/transactionService';
 import TransactionList from '../transactions/TransactionList';
 import TransactionForm from '../transactions/TransactionForm';
+import type { TransactionFormPayload } from '../transactions/TransactionForm';
 import EmptyState from './EmptyState';
 import { toast } from './Toast';
 import type { Transaction } from '../../types';
@@ -69,7 +70,7 @@ const GlobalSearchOverlay = ({ onClose }: GlobalSearchOverlayProps) => {
       })
     : [];
 
-  const handleSaveEdit = async (data: any) => {
+  const handleSaveEdit = async (data: TransactionFormPayload) => {
     if (!editingTransaction) return;
     try {
       await updateTransaction(editingTransaction.id, data);

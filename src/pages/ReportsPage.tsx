@@ -8,6 +8,8 @@ import { formatDateRange, getDateRange } from '../utils/dateUtils';
 import { useFormatCurrency } from '../hooks/useFormatCurrency';
 import type { TimeView } from '../utils/dateUtils';
 import type { Report } from '../types';
+
+type ReportPeriod = Report['period'];
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { toast } from '../components/common/Toast';
@@ -22,7 +24,7 @@ const PERIODS = [
   { value: 'monthly', label: 'This Month' },
   { value: 'quarterly', label: 'This Quarter' },
   { value: 'yearly', label: 'This Year' },
-];
+] as const satisfies readonly { value: ReportPeriod; label: string }[];
 
 // Report period labels ('weekly' etc.) don't match TimeView keys ('week' etc.).
 // getDateRange falls through to its default (today) for any unrecognised key.
@@ -40,7 +42,7 @@ const ReportsPage = () => {
   const { categories } = useCategories();
   const { savedReports, loading: savedLoading } = useReports();
   const [currentReport, setCurrentReport] = useState<Report | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
+  const [selectedPeriod, setSelectedPeriod] = useState<ReportPeriod>('monthly');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
@@ -50,13 +52,13 @@ const ReportsPage = () => {
     const { start, end } = getDateRange(view, now);
     const reportData = generateReport(
       transactions, categories,
-      selectedPeriod as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+      selectedPeriod,
       start, end
     );
     setCurrentReport({
       id: 'temp',
       userId: currentUser?.uid || '',
-      period: selectedPeriod as any,
+      period: selectedPeriod,
       startDate: start,
       endDate: end,
       data: reportData.data,
@@ -68,9 +70,8 @@ const ReportsPage = () => {
     if (!currentUser || !currentReport) return;
     setIsSaving(true);
     try {
-      const { id, ...rest } = currentReport;
       await saveReport(currentUser.uid, {
-        period: rest.period, startDate: rest.startDate, endDate: rest.endDate, data: rest.data,
+        period: currentReport.period, startDate: currentReport.startDate, endDate: currentReport.endDate, data: currentReport.data,
       });
       toast.success('Report saved!');
     } catch {
@@ -83,7 +84,7 @@ const ReportsPage = () => {
   const handleShare = async () => {
     if (!currentReport) return;
     const { income, expenses, savings } = currentReport.data;
-    const text = `${currentReport.period.toUpperCase()} Report\n${formatDateRange(currentReport.startDate, currentReport.endDate)}\n\nIncome: ₹${income.toFixed(2)}\nExpenses: ₹${expenses.toFixed(2)}\nSavings: ₹${savings.toFixed(2)}`;
+    const text = `${currentReport.period.toUpperCase()} Report\n${formatDateRange(currentReport.startDate, currentReport.endDate)}\n\nIncome: ${formatCurrency(income)}\nExpenses: ${formatCurrency(expenses)}\nSavings: ${formatCurrency(savings)}`;
     if (navigator.share) {
       try { await navigator.share({ title: `${currentReport.period} Report`, text }); }
       catch { /* user cancelled */ }

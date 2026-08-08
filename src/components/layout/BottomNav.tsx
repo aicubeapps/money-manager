@@ -11,6 +11,7 @@ import {
   HiCog,
 } from 'react-icons/hi';
 import { useTheme } from '../../hooks/useTheme';
+import { broadcastMoreMenuOpen } from './moreMenuStore';
 
 const mainNavItems = [
   { to: '/', label: 'Home', cmd: 'HOME', icon: HiHome },
@@ -24,25 +25,6 @@ const moreNavItems = [
   { to: '/categories', label: 'Categories', cmd: 'CATEGORIES', icon: HiTag },
   { to: '/settings', label: 'Settings', cmd: 'SETTINGS', icon: HiCog },
 ];
-
-// Lightweight shared state so sibling components (e.g. FloatingActionButton) can
-// react to the More menu's open state without lifting state through the layout tree.
-type MoreMenuListener = (open: boolean) => void;
-let moreMenuOpenState = false;
-const moreMenuListeners = new Set<MoreMenuListener>();
-
-const broadcastMoreMenuOpen = (open: boolean) => {
-  moreMenuOpenState = open;
-  moreMenuListeners.forEach((listener) => listener(open));
-};
-
-export const subscribeToMoreMenuOpen = (listener: MoreMenuListener) => {
-  listener(moreMenuOpenState);
-  moreMenuListeners.add(listener);
-  return () => {
-    moreMenuListeners.delete(listener);
-  };
-};
 
 const BottomNav = () => {
   const [moreOpen, setMoreOpenState] = useState(false);

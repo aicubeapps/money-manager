@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
+import type { QueryConstraint } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Transaction } from '../types';
 import { useAuth } from './useAuth';
@@ -19,18 +20,16 @@ export const useTransactions = (
 ) => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Tracks whose data `transactions` currently holds — see useAccounts.ts for why.
+  const [transactionsOwnerId, setTransactionsOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setTransactions([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) return;
 
     // Build query
-    let conditions: any[] = [where('userId', '==', currentUser.uid)];
+    const conditions: QueryConstraint[] = [where('userId', '==', currentUser.uid)];
     if (filters?.accountId) conditions.push(where('accountId', '==', filters.accountId));
     if (filters?.categoryId) conditions.push(where('categoryId', '==', filters.categoryId));
     if (filters?.type) conditions.push(where('type', '==', filters.type));
@@ -56,6 +55,7 @@ export const useTransactions = (
           } as Transaction;
         });
         setTransactions(data);
+        setTransactionsOwnerId(currentUser.uid);
         setLoading(false);
         setError(null);
       },
@@ -69,5 +69,9 @@ export const useTransactions = (
     return () => unsubscribe();
   }, [currentUser, filters?.accountId, filters?.categoryId, filters?.type, refreshKey]);
 
-  return { transactions, loading, error };
+  return {
+    transactions: currentUser && transactionsOwnerId === currentUser.uid ? transactions : [],
+    loading: currentUser ? loading : false,
+    error: currentUser ? error : null,
+  };
 };

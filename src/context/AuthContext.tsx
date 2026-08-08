@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -66,26 +66,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Google sign-in error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await signOut(auth);
-  };
+  }, []);
 
-  const value = {
-    currentUser,
-    userData,
-    loading,
-    signInWithGoogle,
-    logout,
-  };
+  const value = useMemo(
+    () => ({
+      currentUser,
+      userData,
+      loading,
+      signInWithGoogle,
+      logout,
+    }),
+    [currentUser, userData, loading, signInWithGoogle, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

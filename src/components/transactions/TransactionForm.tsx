@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { HiX, HiOutlineCamera, HiOutlinePhotograph, HiOutlineTrash } from 'react-icons/hi';
-import type { Transaction, Account, Category, CategoryType, Tag } from '../../types';
+import type { Transaction, Account, Category, CategoryType, Tag, RecurringFrequency, MonthlyWeekPosition } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { getTags, createTag } from '../../services/tagService';
 import { createCategory } from '../../services/categoryService';
@@ -84,12 +84,26 @@ const transactionSchema = z
 
 type FormData = z.infer<typeof transactionSchema>;
 
+// What onSubmit below actually builds: the persistable transaction fields,
+// plus an optional recurringRule the caller uses to also create a
+// RecurringRule alongside the transaction (not part of Transaction itself).
+export type TransactionFormPayload = Pick<Transaction, 'type' | 'date' | 'amount' | 'accountId'> &
+  Partial<Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'type' | 'date' | 'amount' | 'accountId'>> & {
+    recurringRule?: {
+      frequency: RecurringFrequency;
+      dayOfMonth?: number;
+      weekOfMonth?: MonthlyWeekPosition;
+      dayOfWeek?: number;
+      startDate: string;
+    };
+  };
+
 interface TransactionFormProps {
   accounts: Account[];
   expenseCategories: Category[];
   incomeCategories: Category[];
   transaction?: Transaction | null;
-  onSave: (data: any) => void;
+  onSave: (data: TransactionFormPayload) => void;
   onCancel: () => void;
 }
 
@@ -348,16 +362,17 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
   }, [transaction, reset]);
 
   const onSubmit = (data: FormData) => {
-    const payload: any = {
+    const payload: TransactionFormPayload = {
       type: data.type,
       date: new Date(data.date),
       amount: data.amount,
+      // Zod's refine() rules guarantee accountId/fromAccountId are non-empty
+      // for their respective transaction types before onSubmit can fire.
+      accountId: (data.type !== 'transfer' ? data.accountId : data.fromAccountId)!,
     };
     if (data.type !== 'transfer') {
-      payload.accountId = data.accountId;
       if (data.categoryId) payload.categoryId = data.categoryId;
     } else {
-      payload.accountId = data.fromAccountId;
       payload.fromAccountId = data.fromAccountId;
       payload.toAccountId = data.toAccountId;
     }
@@ -791,7 +806,7 @@ const TransactionForm = ({ accounts, expenseCategories, incomeCategories, transa
                           <label className="form-label">Week</label>
                           <select
                             value={recurringWeekOfMonth || 'first'}
-                            onChange={(e) => setValue('recurringWeekOfMonth', e.target.value as any)}
+                            onChange={(e) => setValue('recurringWeekOfMonth', e.target.value as MonthlyWeekPosition)}
                             className="form-input"
                           >
                             {WEEK_POSITION_OPTIONS.map(({ value, label }) => (

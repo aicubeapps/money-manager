@@ -8,15 +8,13 @@ import { subscribeWithRetry } from '../utils/firestoreRetry';
 export const useReports = () => {
   const { currentUser } = useAuth();
   const [savedReports, setSavedReports] = useState<Report[]>([]);
+  // Tracks whose data `savedReports` currently holds — see useAccounts.ts for why.
+  const [reportsOwnerId, setReportsOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setSavedReports([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) return;
 
     const q = query(
       collection(db, 'reports'),
@@ -38,6 +36,7 @@ export const useReports = () => {
           } as Report;
         });
         setSavedReports(data);
+        setReportsOwnerId(currentUser.uid);
         setLoading(false);
         setError(null);
       },
@@ -51,5 +50,9 @@ export const useReports = () => {
     return () => unsubscribe();
   }, [currentUser]);
 
-  return { savedReports, loading, error };
+  return {
+    savedReports: currentUser && reportsOwnerId === currentUser.uid ? savedReports : [],
+    loading: currentUser ? loading : false,
+    error: currentUser ? error : null,
+  };
 };

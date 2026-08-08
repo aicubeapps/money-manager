@@ -8,15 +8,13 @@ import { subscribeWithRetry } from '../utils/firestoreRetry';
 export const useCategories = (refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
+  // Tracks whose data `categories` currently holds — see useAccounts.ts for why.
+  const [categoriesOwnerId, setCategoriesOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setCategories([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) return;
 
     const q = query(
       collection(db, 'categories'),
@@ -31,6 +29,7 @@ export const useCategories = (refreshKey = 0) => {
           ...doc.data(),
         })) as Category[];
         setCategories(data);
+        setCategoriesOwnerId(currentUser.uid);
         setLoading(false);
         setError(null);
       },
@@ -44,5 +43,9 @@ export const useCategories = (refreshKey = 0) => {
     return () => unsubscribe();
   }, [currentUser, refreshKey]);
 
-  return { categories, loading, error };
+  return {
+    categories: currentUser && categoriesOwnerId === currentUser.uid ? categories : [],
+    loading: currentUser ? loading : false,
+    error: currentUser ? error : null,
+  };
 };

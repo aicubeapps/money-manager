@@ -8,15 +8,16 @@ import { subscribeWithRetry } from '../utils/firestoreRetry';
 export const useAccounts = (refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
+  // Tracks whose data `accounts` currently holds, so a stale previous user's
+  // rows are never shown for a currentUser they don't belong to (the effect
+  // only clears data reactively once the new subscription's first snapshot
+  // arrives, not synchronously on user change).
+  const [accountsOwnerId, setAccountsOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setAccounts([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) return;
 
     const q = query(
       collection(db, 'accounts'),
@@ -38,6 +39,7 @@ export const useAccounts = (refreshKey = 0) => {
           } as Account;
         });
         setAccounts(accountsData);
+        setAccountsOwnerId(currentUser.uid);
         setLoading(false);
         setError(null);
       },
@@ -51,5 +53,9 @@ export const useAccounts = (refreshKey = 0) => {
     return () => unsubscribe();
   }, [currentUser, refreshKey]);
 
-  return { accounts, loading, error };
+  return {
+    accounts: currentUser && accountsOwnerId === currentUser.uid ? accounts : [],
+    loading: currentUser ? loading : false,
+    error: currentUser ? error : null,
+  };
 };

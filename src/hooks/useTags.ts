@@ -8,15 +8,13 @@ import { subscribeWithRetry } from '../utils/firestoreRetry';
 export const useTags = (refreshKey = 0) => {
   const { currentUser } = useAuth();
   const [tags, setTags] = useState<Tag[]>([]);
+  // Tracks whose data `tags` currently holds — see useAccounts.ts for why.
+  const [tagsOwnerId, setTagsOwnerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setTags([]);
-      setLoading(false);
-      return;
-    }
+    if (!currentUser) return;
 
     const q = query(
       collection(db, 'tags'),
@@ -31,6 +29,7 @@ export const useTags = (refreshKey = 0) => {
           return { id: doc.id, ...docData, excludeFromBudget: docData.excludeFromBudget ?? false };
         }) as Tag[];
         setTags(data);
+        setTagsOwnerId(currentUser.uid);
         setLoading(false);
         setError(null);
       },
@@ -44,5 +43,9 @@ export const useTags = (refreshKey = 0) => {
     return () => unsubscribe();
   }, [currentUser, refreshKey]);
 
-  return { tags, loading, error };
+  return {
+    tags: currentUser && tagsOwnerId === currentUser.uid ? tags : [],
+    loading: currentUser ? loading : false,
+    error: currentUser ? error : null,
+  };
 };

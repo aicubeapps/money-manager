@@ -6,6 +6,7 @@ import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import TransactionList from '../components/transactions/TransactionList';
 import TransactionForm from '../components/transactions/TransactionForm';
+import type { TransactionFormPayload } from '../components/transactions/TransactionForm';
 import { createTransaction, updateTransaction, deleteTransaction } from '../services/transactionService';
 import { createRecurringRule } from '../services/firestore/recurringRules';
 import { calculateNextDueDate } from '../utils/recurringDates';
@@ -71,7 +72,7 @@ const TransactionsPage = () => {
   const handleAdd = () => { setEditingTransaction(null); setShowForm(true); };
   const handleEdit = (transaction: Transaction) => { setEditingTransaction(transaction); setShowForm(true); };
 
-  const handleSave = async (data: any) => {
+  const handleSave = async (data: TransactionFormPayload) => {
     if (!currentUser) return;
     const { recurringRule, ...transactionData } = data;
     try {
