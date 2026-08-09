@@ -6,7 +6,7 @@ import {
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
-import { auth, googleProvider, db } from '../firebase/config';
+import { auth, googleProvider, db, authReady } from '../firebase/config';
 import type { User as AppUser } from '../types';
 import { seedDefaultCategories } from '../services/categoryService';
 
@@ -68,6 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = useCallback(async () => {
     try {
+      await authReady;
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error('Google sign-in error:', error);

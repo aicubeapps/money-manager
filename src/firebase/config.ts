@@ -26,7 +26,14 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 // effect by the time the user interacts with the app. Doesn't affect
 // onAuthStateChanged — that still fires the same way, just from a
 // longer-lived stored session.
-setPersistence(auth, browserLocalPersistence).catch((error) => {
+//
+// Exported so sign-in flows can explicitly await it before calling
+// signInWithPopup/signInWithEmailAndPassword: setPersistence() is async, and
+// leaving it fire-and-forget left a (narrow, but real) race where a sign-in
+// call could complete before the persistence switch had actually landed.
+// Resolves even on failure — a persistence error falls back to Firebase's
+// default persistence rather than blocking sign-in outright.
+export const authReady: Promise<void> = setPersistence(auth, browserLocalPersistence).catch((error) => {
   console.error('Error setting auth persistence:', error);
 });
 
