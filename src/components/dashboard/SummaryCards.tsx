@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
+import { useTheme } from '../../hooks/useTheme';
 import { HiTrendingUp, HiTrendingDown, HiMinus } from 'react-icons/hi';
 import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
 import type { Account } from '../../types';
@@ -28,6 +29,7 @@ const SummaryCards = ({
   accounts,
 }: SummaryCardsProps) => {
   const formatCurrency = useFormatCurrency();
+  const { theme } = useTheme();
   const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor; mode?: 'transactions' | 'accounts' } | null>(null);
   const assetAccountIds = accounts.filter((a) => a.accountGroup === 'asset').map((a) => a.id);
 
@@ -104,11 +106,14 @@ const SummaryCards = ({
   return (
     <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {cards.map(({ label, value, color, bg, badge, icon, onClick }) => (
+        {cards.map(({ label, value, color, bg, badge, icon, onClick }) => {
+          const isNetWorthOled = label === 'Net Worth' && theme === 'oled';
+          return (
           <div
             key={label}
             onClick={onClick}
-            className={`card p-4 bg-gradient-to-br ${bg} ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+            className={`card p-4 ${isNetWorthOled ? '' : `bg-gradient-to-br ${bg}`} ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+            style={isNetWorthOled ? { background: '#000000' } : undefined}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</span>
@@ -119,7 +124,8 @@ const SummaryCards = ({
             </div>
             {badge && <div>{badge}</div>}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {drillDown && (

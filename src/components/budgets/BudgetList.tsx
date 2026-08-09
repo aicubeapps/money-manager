@@ -31,6 +31,7 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
     return {
       name: category?.name || 'Unknown',
       icon: category?.icon || '📌',
+      color: category?.color,
     };
   };
 
@@ -45,15 +46,18 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
     (sum, b) => sum + getTotalSpend(transactions, tags, b.month, b.year),
     0
   );
-  const globalPercentage = totalBudgeted > 0 ? (totalSpentAcrossBudgets / totalBudgeted) * 100 : 0;
   const isGlobalOverBudget = totalSpentAcrossBudgets > totalBudgeted;
   const categoryContributions = budgets
     .flatMap((b) => b.allocations.map((a) => ({ budget: b, categoryId: a.categoryId })))
-    .map(({ budget, categoryId }) => ({
-      categoryId,
-      name: getCategoryInfo(categoryId).name,
-      spend: getCategorySpend(transactions, tags, categoryId, budget.month, budget.year),
-    }))
+    .map(({ budget, categoryId }) => {
+      const info = getCategoryInfo(categoryId);
+      return {
+        categoryId,
+        name: info.name,
+        color: info.color,
+        spend: getCategorySpend(transactions, tags, categoryId, budget.month, budget.year),
+      };
+    })
     .filter((c) => c.spend > 0)
     .sort((a, b) => b.spend - a.spend)
     .map((c) => ({
@@ -80,11 +84,21 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
             <span className="font-semibold text-gray-900 dark:text-white text-sm">Overall Progress</span>
             <span>{formatCurrency(totalSpentAcrossBudgets)} of {formatCurrency(totalBudgeted)}</span>
           </div>
-          <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${isGlobalOverBudget ? 'bg-red-500' : 'bg-primary-500'}`}
-              style={{ width: `${Math.min(globalPercentage, 100)}%` }}
-            />
+          <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
+            {isGlobalOverBudget ? (
+              <div className="h-full bg-red-500 flex-shrink-0" style={{ width: '100%' }} />
+            ) : (
+              categoryContributions.map((c) => (
+                <div
+                  key={c.categoryId}
+                  className="h-full flex-shrink-0"
+                  style={{
+                    width: `${totalBudgeted > 0 ? (c.spend / totalBudgeted) * 100 : 0}%`,
+                    backgroundColor: c.color || '#6366f1',
+                  }}
+                />
+              ))
+            )}
           </div>
           {categoryContributions.length > 0 && (
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-gray-500 dark:text-gray-400">
@@ -132,12 +146,11 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
 
                 <div className="space-y-3">
                   {budget.allocations.map((allocation) => {
-                    const { name, icon } = getCategoryInfo(allocation.categoryId);
+                    const { name, icon, color: categoryColor } = getCategoryInfo(allocation.categoryId);
                     const spend = getCategorySpend(transactions, tags, allocation.categoryId, budget.month, budget.year);
                     const remaining = allocation.amount - spend;
                     const percentage = allocation.amount > 0 ? (spend / allocation.amount) * 100 : 0;
                     const isOver = percentage >= 100;
-                    const isWarning = percentage >= 80 && !isOver;
 
                     return (
                       <div
@@ -160,10 +173,11 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
                         </div>
                         <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-1">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              isOver ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-primary-500'
-                            }`}
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(percentage, 100)}%`,
+                              backgroundColor: isOver ? '#ef4444' : (categoryColor || '#6366f1'),
+                            }}
                           />
                         </div>
                         <div className="flex items-center justify-between text-[11px] text-gray-400 dark:text-gray-500">
