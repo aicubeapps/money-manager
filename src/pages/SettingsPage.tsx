@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
-import type { Theme } from '../context/ThemeContext';
+import type { AccentColor, Theme } from '../context/ThemeContext';
+import { ACCENT_COLORS } from '../context/ThemeContext';
 import { useAuth } from '../hooks/useAuth';
 import { useCurrency } from '../context/CurrencyContext';
-import { HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiOutlineCurrencyDollar, HiChevronRight, HiOutlineCloudUpload, HiOutlineCloud, HiOutlineColorSwatch } from 'react-icons/hi';
+import { HiOutlineLogout, HiOutlineUser, HiOutlineShieldCheck, HiOutlineTag, HiOutlineRefresh, HiOutlineInformationCircle, HiOutlineCurrencyDollar, HiChevronRight, HiOutlineCloudUpload, HiOutlineCloud, HiOutlineColorSwatch, HiOutlineCheck } from 'react-icons/hi';
 import RecurringRulesList from '../components/settings/RecurringRulesList';
 import { FIAT_CURRENCIES, CRYPTO_CURRENCIES } from '../services/currencyService';
 import { connectDrive, disconnectDrive, isDriveConnected, hasConnectedBefore, reconnectDriveSilently } from '../services/googleDriveService';
@@ -37,11 +38,25 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: string; desc: string }
   { value: 'light', label: 'Light', icon: '☀️', desc: 'Clean light interface' },
   { value: 'dark', label: 'Dark', icon: '🌙', desc: 'Easy on the eyes' },
   { value: 'oled', label: 'OLED Black', icon: '⬛', desc: 'True black for OLED screens' },
-  { value: 'cyberpunk', label: 'Cyberpunk', icon: '⚡', desc: 'Neon terminal aesthetic' },
 ];
 
+const ACCENT_SWATCHES: Record<AccentColor, string> = {
+  indigo: '#6366f1',
+  violet: '#8b5cf6',
+  rose: '#f43f5e',
+  amber: '#f59e0b',
+  emerald: '#10b981',
+  cyan: '#06b6d4',
+  sky: '#0ea5e9',
+  pink: '#ec4899',
+  orange: '#f97316',
+  lime: '#84cc16',
+  teal: '#14b8a6',
+  red: '#ef4444',
+};
+
 const SettingsPage = () => {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, accent, setAccent } = useTheme();
   const { userData, currentUser, logout } = useAuth();
   const {
     enabled: currencyEnabled,
@@ -175,103 +190,6 @@ const SettingsPage = () => {
     }
   };
 
-  const isCyberpunk = theme === 'cyberpunk';
-
-  if (isCyberpunk) {
-    const cpFont: React.CSSProperties = { fontFamily: "'Courier New', Courier, monospace" };
-    return (
-      <div style={{ ...cpFont, color: '#00FF41', maxWidth: '640px' }} className="space-y-6 animate-fade-in">
-        <div>
-          <div style={{ fontSize: '18px', letterSpacing: '0.08em' }}>[SETTINGS]</div>
-          <div style={{ fontSize: '11px', color: '#008F11', letterSpacing: '0.06em' }}>MANAGE_PREFERENCES</div>
-        </div>
-
-        {/* Profile */}
-        {userData && (
-          <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
-            <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[PROFILE]</div>
-            <div style={{ color: '#00FF41', letterSpacing: '0.06em' }}>USER: {userData.displayName?.toUpperCase()}</div>
-            <div style={{ color: '#008F11', fontSize: '11px', marginTop: '4px' }}>{userData.email}</div>
-          </div>
-        )}
-
-        {/* Appearance */}
-        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
-          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[APPEARANCE // THEME_SELECT]</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {THEME_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setTheme(opt.value)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '8px 12px',
-                  background: '#000000',
-                  border: theme === opt.value ? '1px solid #FF00FF' : '1px solid rgba(0,255,65,0.25)',
-                  color: theme === opt.value ? '#FF00FF' : '#00CC33',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
-                  fontSize: '12px',
-                  letterSpacing: '0.06em',
-                }}
-              >
-                <span style={{ display: 'inline-block', width: '20px', height: '20px', border: theme === opt.value ? '2px solid #FF00FF' : '2px solid rgba(0,255,65,0.4)', background: opt.value === 'light' ? '#ffffff' : opt.value === 'dark' ? '#111827' : '#000000' }} />
-                <span>
-                  {theme === opt.value ? '>> ' : '> '}{opt.label}
-                  {theme === opt.value && <span style={{ color: '#FF00FF', marginLeft: '8px' }}>[ACTIVE]</span>}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
-          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[TAGS]</div>
-          <Link to="/settings/tags" style={{ color: '#00FFFF', fontSize: '12px', letterSpacing: '0.06em', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>&gt; MANAGE_TAGS</span>
-            <span style={{ color: '#008F11' }}>[→]</span>
-          </Link>
-        </div>
-
-        {/* Security */}
-        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
-          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '8px' }}>[SECURITY]</div>
-          <div style={{ color: '#00CC33', fontSize: '11px', lineHeight: '1.6' }}>
-            AUTH: [GOOGLE] // STORAGE: [FIRESTORE] // STATUS: [SECURE]
-          </div>
-        </div>
-
-        {/* Sign out */}
-        <div style={{ background: '#000000', border: '1px solid rgba(0,255,65,0.25)', padding: '16px' }}>
-          <div style={{ color: '#008F11', fontSize: '10px', letterSpacing: '0.08em', marginBottom: '12px' }}>[ACCOUNT]</div>
-          <button
-            onClick={logout}
-            style={{
-              background: '#000000',
-              border: '1px solid rgba(255,0,64,0.5)',
-              color: '#FF0040',
-              padding: '6px 16px',
-              fontSize: '12px',
-              letterSpacing: '0.08em',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            [LOGOUT] // TERMINATE_SESSION
-          </button>
-        </div>
-
-        <div style={{ color: '#008F11', fontSize: '10px', textAlign: 'center', letterSpacing: '0.06em' }}>
-          EXPENSE_TRACKER v1.0 // REACT + FIREBASE
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 max-w-2xl animate-fade-in">
       <div>
@@ -328,6 +246,31 @@ const SettingsPage = () => {
             </button>
           ))}
         </div>
+
+        {theme === 'oled' && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              Accent color
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ACCENT_COLORS.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => setAccent(color)}
+                  aria-label={color}
+                  title={color.charAt(0).toUpperCase() + color.slice(1)}
+                  className="relative w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150"
+                  style={{
+                    backgroundColor: ACCENT_SWATCHES[color],
+                    boxShadow: accent === color ? `0 0 0 2px #000000, 0 0 0 4px ${ACCENT_SWATCHES[color]}` : 'none',
+                  }}
+                >
+                  {accent === color && <HiOutlineCheck className="w-4 h-4 text-white drop-shadow" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Display Currency */}

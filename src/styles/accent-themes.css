@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════
+   OLED ACCENT COLORS
+   Recolors the app's `primary-*` Tailwind utility classes while
+   theme === 'oled', driven by the `data-accent` attribute ThemeContext
+   sets on <html>. Scoped under `.theme-oled[data-accent="..."]` so it
+   never touches Light/Dark. Every `primary-*` class variant actually
+   used in the codebase is listed per accent — see the primary-* grep
+   in tailwind.config.js's `primary` scale for the values this replaces.
+
+   'indigo' needs no block: it's identical to the app's default
+   `primary` palette in tailwind.config.js, so leaving it unmatched
+   already renders correctly.
+
+   Each block also carries one class outside the primary-* family:
+   `dark:to-indigo-900/20`, the Net Worth card's hardcoded second
+   gradient stop (SummaryCards.tsx) — without it that one card would
+   stay half-indigo under every other accent.
+   ═══════════════════════════════════════════════════════════ */
+
+.theme-oled[data-accent="violet"] .bg-primary-50 { background-color: #f5f3ff !important; }
+.theme-oled[data-accent="violet"] .bg-primary-100 { background-color: #ede9fe !important; }
+.theme-oled[data-accent="violet"] .bg-primary-500 { background-color: #8b5cf6 !important; }
+.theme-oled[data-accent="violet"] .border-primary-500 { border-color: #8b5cf6 !important; }
+.theme-oled[data-accent="violet"] .dark\:bg-primary-900\/20 { background-color: #4c1d9533 !important; }
+.theme-oled[data-accent="violet"] .dark\:bg-primary-900\/30 { background-color: #4c1d954d !important; }
+.theme-oled[data-accent="violet"] .dark\:from-primary-900\/20 { --tw-gradient-from: #4c1d9533 !important; }
+.theme-oled[data-accent="violet"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #4c1d9533 !important; }
+.theme-oled[data-accent="violet"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #4c1d9533 !important; }
+.theme-oled[data-accent="violet"] .dark\:hover\:border-primary-700:hover { border-color: #6d28d9 !important; }
+.theme-oled[data-accent="violet"] .dark\:ring-primary-900 { --tw-ring-color: #4c1d95 !important; }
+.theme-oled[data-accent="violet"] .dark\:text-primary-400 { color: #a78bfa !important; }
+.theme-oled[data-accent="violet"] .dark\:to-primary-950 { --tw-gradient-to: #2e1065 !important; }
+.theme-oled[data-accent="violet"] .focus\:ring-primary-400:focus { --tw-ring-color: #a78bfa !important; }
+.theme-oled[data-accent="violet"] .from-primary-50 { --tw-gradient-from: #f5f3ff !important; }
+.theme-oled[data-accent="violet"] .hover\:bg-primary-50:hover { background-color: #f5f3ff !important; }
+.theme-oled[data-accent="violet"] .hover\:bg-primary-600:hover { background-color: #7c3aed !important; }
+.theme-oled[data-accent="violet"] .hover\:border-primary-300:hover { border-color: #c4b5fd !important; }
+.theme-oled[data-accent="violet"] .ring-primary-100 { --tw-ring-color: #ede9fe !important; }
+.theme-oled[data-accent="violet"] .ring-primary-500 { --tw-ring-color: #8b5cf6 !important; }
+.theme-oled[data-accent="violet"] .shadow-primary-500\/25 { --tw-shadow-color: #8b5cf640 !important; }
+.theme-oled[data-accent="violet"] .text-primary-500 { color: #8b5cf6 !important; }
+.theme-oled[data-accent="violet"] .text-primary-600 { color: #7c3aed !important; }
+.theme-oled[data-accent="violet"] .to-primary-50 { --tw-gradient-to: #f5f3ff !important; }
+
+.theme-oled[data-accent="rose"] .bg-primary-50 { background-color: #fff1f2 !important; }
+.theme-oled[data-accent="rose"] .bg-primary-100 { background-color: #ffe4e6 !important; }
+.theme-oled[data-accent="rose"] .bg-primary-500 { background-color: #f43f5e !important; }
+.theme-oled[data-accent="rose"] .border-primary-500 { border-color: #f43f5e !important; }
+.theme-oled[data-accent="rose"] .dark\:bg-primary-900\/20 { background-color: #88133733 !important; }
+.theme-oled[data-accent="rose"] .dark\:bg-primary-900\/30 { background-color: #8813374d !important; }
+.theme-oled[data-accent="rose"] .dark\:from-primary-900\/20 { --tw-gradient-from: #88133733 !important; }
+.theme-oled[data-accent="rose"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #88133733 !important; }
+.theme-oled[data-accent="rose"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #88133733 !important; }
+.theme-oled[data-accent="rose"] .dark\:hover\:border-primary-700:hover { border-color: #be123c !important; }
+.theme-oled[data-accent="rose"] .dark\:ring-primary-900 { --tw-ring-color: #881337 !important; }
+.theme-oled[data-accent="rose"] .dark\:text-primary-400 { color: #fb7185 !important; }
+.theme-oled[data-accent="rose"] .dark\:to-primary-950 { --tw-gradient-to: #4c0519 !important; }
+.theme-oled[data-accent="rose"] .focus\:ring-primary-400:focus { --tw-ring-color: #fb7185 !important; }
+.theme-oled[data-accent="rose"] .from-primary-50 { --tw-gradient-from: #fff1f2 !important; }
+.theme-oled[data-accent="rose"] .hover\:bg-primary-50:hover { background-color: #fff1f2 !important; }
+.theme-oled[data-accent="rose"] .hover\:bg-primary-600:hover { background-color: #e11d48 !important; }
+.theme-oled[data-accent="rose"] .hover\:border-primary-300:hover { border-color: #fda4af !important; }
+.theme-oled[data-accent="rose"] .ring-primary-100 { --tw-ring-color: #ffe4e6 !important; }
+.theme-oled[data-accent="rose"] .ring-primary-500 { --tw-ring-color: #f43f5e !important; }
+.theme-oled[data-accent="rose"] .shadow-primary-500\/25 { --tw-shadow-color: #f43f5e40 !important; }
+.theme-oled[data-accent="rose"] .text-primary-500 { color: #f43f5e !important; }
+.theme-oled[data-accent="rose"] .text-primary-600 { color: #e11d48 !important; }
+.theme-oled[data-accent="rose"] .to-primary-50 { --tw-gradient-to: #fff1f2 !important; }
+
+.theme-oled[data-accent="amber"] .bg-primary-50 { background-color: #fffbeb !important; }
+.theme-oled[data-accent="amber"] .bg-primary-100 { background-color: #fef3c7 !important; }
+.theme-oled[data-accent="amber"] .bg-primary-500 { background-color: #f59e0b !important; }
+.theme-oled[data-accent="amber"] .border-primary-500 { border-color: #f59e0b !important; }
+.theme-oled[data-accent="amber"] .dark\:bg-primary-900\/20 { background-color: #78350f33 !important; }
+.theme-oled[data-accent="amber"] .dark\:bg-primary-900\/30 { background-color: #78350f4d !important; }
+.theme-oled[data-accent="amber"] .dark\:from-primary-900\/20 { --tw-gradient-from: #78350f33 !important; }
+.theme-oled[data-accent="amber"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #78350f33 !important; }
+.theme-oled[data-accent="amber"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #78350f33 !important; }
+.theme-oled[data-accent="amber"] .dark\:hover\:border-primary-700:hover { border-color: #b45309 !important; }
+.theme-oled[data-accent="amber"] .dark\:ring-primary-900 { --tw-ring-color: #78350f !important; }
+.theme-oled[data-accent="amber"] .dark\:text-primary-400 { color: #fbbf24 !important; }
+.theme-oled[data-accent="amber"] .dark\:to-primary-950 { --tw-gradient-to: #451a03 !important; }
+.theme-oled[data-accent="amber"] .focus\:ring-primary-400:focus { --tw-ring-color: #fbbf24 !important; }
+.theme-oled[data-accent="amber"] .from-primary-50 { --tw-gradient-from: #fffbeb !important; }
+.theme-oled[data-accent="amber"] .hover\:bg-primary-50:hover { background-color: #fffbeb !important; }
+.theme-oled[data-accent="amber"] .hover\:bg-primary-600:hover { background-color: #d97706 !important; }
+.theme-oled[data-accent="amber"] .hover\:border-primary-300:hover { border-color: #fcd34d !important; }
+.theme-oled[data-accent="amber"] .ring-primary-100 { --tw-ring-color: #fef3c7 !important; }
+.theme-oled[data-accent="amber"] .ring-primary-500 { --tw-ring-color: #f59e0b !important; }
+.theme-oled[data-accent="amber"] .shadow-primary-500\/25 { --tw-shadow-color: #f59e0b40 !important; }
+.theme-oled[data-accent="amber"] .text-primary-500 { color: #f59e0b !important; }
+.theme-oled[data-accent="amber"] .text-primary-600 { color: #d97706 !important; }
+.theme-oled[data-accent="amber"] .to-primary-50 { --tw-gradient-to: #fffbeb !important; }
+
+.theme-oled[data-accent="emerald"] .bg-primary-50 { background-color: #ecfdf5 !important; }
+.theme-oled[data-accent="emerald"] .bg-primary-100 { background-color: #d1fae5 !important; }
+.theme-oled[data-accent="emerald"] .bg-primary-500 { background-color: #10b981 !important; }
+.theme-oled[data-accent="emerald"] .border-primary-500 { border-color: #10b981 !important; }
+.theme-oled[data-accent="emerald"] .dark\:bg-primary-900\/20 { background-color: #064e3b33 !important; }
+.theme-oled[data-accent="emerald"] .dark\:bg-primary-900\/30 { background-color: #064e3b4d !important; }
+.theme-oled[data-accent="emerald"] .dark\:from-primary-900\/20 { --tw-gradient-from: #064e3b33 !important; }
+.theme-oled[data-accent="emerald"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #064e3b33 !important; }
+.theme-oled[data-accent="emerald"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #064e3b33 !important; }
+.theme-oled[data-accent="emerald"] .dark\:hover\:border-primary-700:hover { border-color: #047857 !important; }
+.theme-oled[data-accent="emerald"] .dark\:ring-primary-900 { --tw-ring-color: #064e3b !important; }
+.theme-oled[data-accent="emerald"] .dark\:text-primary-400 { color: #34d399 !important; }
+.theme-oled[data-accent="emerald"] .dark\:to-primary-950 { --tw-gradient-to: #022c22 !important; }
+.theme-oled[data-accent="emerald"] .focus\:ring-primary-400:focus { --tw-ring-color: #34d399 !important; }
+.theme-oled[data-accent="emerald"] .from-primary-50 { --tw-gradient-from: #ecfdf5 !important; }
+.theme-oled[data-accent="emerald"] .hover\:bg-primary-50:hover { background-color: #ecfdf5 !important; }
+.theme-oled[data-accent="emerald"] .hover\:bg-primary-600:hover { background-color: #059669 !important; }
+.theme-oled[data-accent="emerald"] .hover\:border-primary-300:hover { border-color: #6ee7b7 !important; }
+.theme-oled[data-accent="emerald"] .ring-primary-100 { --tw-ring-color: #d1fae5 !important; }
+.theme-oled[data-accent="emerald"] .ring-primary-500 { --tw-ring-color: #10b981 !important; }
+.theme-oled[data-accent="emerald"] .shadow-primary-500\/25 { --tw-shadow-color: #10b98140 !important; }
+.theme-oled[data-accent="emerald"] .text-primary-500 { color: #10b981 !important; }
+.theme-oled[data-accent="emerald"] .text-primary-600 { color: #059669 !important; }
+.theme-oled[data-accent="emerald"] .to-primary-50 { --tw-gradient-to: #ecfdf5 !important; }
+
+.theme-oled[data-accent="cyan"] .bg-primary-50 { background-color: #ecfeff !important; }
+.theme-oled[data-accent="cyan"] .bg-primary-100 { background-color: #cffafe !important; }
+.theme-oled[data-accent="cyan"] .bg-primary-500 { background-color: #06b6d4 !important; }
+.theme-oled[data-accent="cyan"] .border-primary-500 { border-color: #06b6d4 !important; }
+.theme-oled[data-accent="cyan"] .dark\:bg-primary-900\/20 { background-color: #164e6333 !important; }
+.theme-oled[data-accent="cyan"] .dark\:bg-primary-900\/30 { background-color: #164e634d !important; }
+.theme-oled[data-accent="cyan"] .dark\:from-primary-900\/20 { --tw-gradient-from: #164e6333 !important; }
+.theme-oled[data-accent="cyan"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #164e6333 !important; }
+.theme-oled[data-accent="cyan"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #164e6333 !important; }
+.theme-oled[data-accent="cyan"] .dark\:hover\:border-primary-700:hover { border-color: #0e7490 !important; }
+.theme-oled[data-accent="cyan"] .dark\:ring-primary-900 { --tw-ring-color: #164e63 !important; }
+.theme-oled[data-accent="cyan"] .dark\:text-primary-400 { color: #22d3ee !important; }
+.theme-oled[data-accent="cyan"] .dark\:to-primary-950 { --tw-gradient-to: #083344 !important; }
+.theme-oled[data-accent="cyan"] .focus\:ring-primary-400:focus { --tw-ring-color: #22d3ee !important; }
+.theme-oled[data-accent="cyan"] .from-primary-50 { --tw-gradient-from: #ecfeff !important; }
+.theme-oled[data-accent="cyan"] .hover\:bg-primary-50:hover { background-color: #ecfeff !important; }
+.theme-oled[data-accent="cyan"] .hover\:bg-primary-600:hover { background-color: #0891b2 !important; }
+.theme-oled[data-accent="cyan"] .hover\:border-primary-300:hover { border-color: #67e8f9 !important; }
+.theme-oled[data-accent="cyan"] .ring-primary-100 { --tw-ring-color: #cffafe !important; }
+.theme-oled[data-accent="cyan"] .ring-primary-500 { --tw-ring-color: #06b6d4 !important; }
+.theme-oled[data-accent="cyan"] .shadow-primary-500\/25 { --tw-shadow-color: #06b6d440 !important; }
+.theme-oled[data-accent="cyan"] .text-primary-500 { color: #06b6d4 !important; }
+.theme-oled[data-accent="cyan"] .text-primary-600 { color: #0891b2 !important; }
+.theme-oled[data-accent="cyan"] .to-primary-50 { --tw-gradient-to: #ecfeff !important; }
+
+.theme-oled[data-accent="sky"] .bg-primary-50 { background-color: #f0f9ff !important; }
+.theme-oled[data-accent="sky"] .bg-primary-100 { background-color: #e0f2fe !important; }
+.theme-oled[data-accent="sky"] .bg-primary-500 { background-color: #0ea5e9 !important; }
+.theme-oled[data-accent="sky"] .border-primary-500 { border-color: #0ea5e9 !important; }
+.theme-oled[data-accent="sky"] .dark\:bg-primary-900\/20 { background-color: #0c4a6e33 !important; }
+.theme-oled[data-accent="sky"] .dark\:bg-primary-900\/30 { background-color: #0c4a6e4d !important; }
+.theme-oled[data-accent="sky"] .dark\:from-primary-900\/20 { --tw-gradient-from: #0c4a6e33 !important; }
+.theme-oled[data-accent="sky"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #0c4a6e33 !important; }
+.theme-oled[data-accent="sky"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #0c4a6e33 !important; }
+.theme-oled[data-accent="sky"] .dark\:hover\:border-primary-700:hover { border-color: #0369a1 !important; }
+.theme-oled[data-accent="sky"] .dark\:ring-primary-900 { --tw-ring-color: #0c4a6e !important; }
+.theme-oled[data-accent="sky"] .dark\:text-primary-400 { color: #38bdf8 !important; }
+.theme-oled[data-accent="sky"] .dark\:to-primary-950 { --tw-gradient-to: #082f49 !important; }
+.theme-oled[data-accent="sky"] .focus\:ring-primary-400:focus { --tw-ring-color: #38bdf8 !important; }
+.theme-oled[data-accent="sky"] .from-primary-50 { --tw-gradient-from: #f0f9ff !important; }
+.theme-oled[data-accent="sky"] .hover\:bg-primary-50:hover { background-color: #f0f9ff !important; }
+.theme-oled[data-accent="sky"] .hover\:bg-primary-600:hover { background-color: #0284c7 !important; }
+.theme-oled[data-accent="sky"] .hover\:border-primary-300:hover { border-color: #7dd3fc !important; }
+.theme-oled[data-accent="sky"] .ring-primary-100 { --tw-ring-color: #e0f2fe !important; }
+.theme-oled[data-accent="sky"] .ring-primary-500 { --tw-ring-color: #0ea5e9 !important; }
+.theme-oled[data-accent="sky"] .shadow-primary-500\/25 { --tw-shadow-color: #0ea5e940 !important; }
+.theme-oled[data-accent="sky"] .text-primary-500 { color: #0ea5e9 !important; }
+.theme-oled[data-accent="sky"] .text-primary-600 { color: #0284c7 !important; }
+.theme-oled[data-accent="sky"] .to-primary-50 { --tw-gradient-to: #f0f9ff !important; }
+
+.theme-oled[data-accent="pink"] .bg-primary-50 { background-color: #fdf2f8 !important; }
+.theme-oled[data-accent="pink"] .bg-primary-100 { background-color: #fce7f3 !important; }
+.theme-oled[data-accent="pink"] .bg-primary-500 { background-color: #ec4899 !important; }
+.theme-oled[data-accent="pink"] .border-primary-500 { border-color: #ec4899 !important; }
+.theme-oled[data-accent="pink"] .dark\:bg-primary-900\/20 { background-color: #83184333 !important; }
+.theme-oled[data-accent="pink"] .dark\:bg-primary-900\/30 { background-color: #8318434d !important; }
+.theme-oled[data-accent="pink"] .dark\:from-primary-900\/20 { --tw-gradient-from: #83184333 !important; }
+.theme-oled[data-accent="pink"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #83184333 !important; }
+.theme-oled[data-accent="pink"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #83184333 !important; }
+.theme-oled[data-accent="pink"] .dark\:hover\:border-primary-700:hover { border-color: #be185d !important; }
+.theme-oled[data-accent="pink"] .dark\:ring-primary-900 { --tw-ring-color: #831843 !important; }
+.theme-oled[data-accent="pink"] .dark\:text-primary-400 { color: #f472b6 !important; }
+.theme-oled[data-accent="pink"] .dark\:to-primary-950 { --tw-gradient-to: #500724 !important; }
+.theme-oled[data-accent="pink"] .focus\:ring-primary-400:focus { --tw-ring-color: #f472b6 !important; }
+.theme-oled[data-accent="pink"] .from-primary-50 { --tw-gradient-from: #fdf2f8 !important; }
+.theme-oled[data-accent="pink"] .hover\:bg-primary-50:hover { background-color: #fdf2f8 !important; }
+.theme-oled[data-accent="pink"] .hover\:bg-primary-600:hover { background-color: #db2777 !important; }
+.theme-oled[data-accent="pink"] .hover\:border-primary-300:hover { border-color: #f9a8d4 !important; }
+.theme-oled[data-accent="pink"] .ring-primary-100 { --tw-ring-color: #fce7f3 !important; }
+.theme-oled[data-accent="pink"] .ring-primary-500 { --tw-ring-color: #ec4899 !important; }
+.theme-oled[data-accent="pink"] .shadow-primary-500\/25 { --tw-shadow-color: #ec489940 !important; }
+.theme-oled[data-accent="pink"] .text-primary-500 { color: #ec4899 !important; }
+.theme-oled[data-accent="pink"] .text-primary-600 { color: #db2777 !important; }
+.theme-oled[data-accent="pink"] .to-primary-50 { --tw-gradient-to: #fdf2f8 !important; }
+
+.theme-oled[data-accent="orange"] .bg-primary-50 { background-color: #fff7ed !important; }
+.theme-oled[data-accent="orange"] .bg-primary-100 { background-color: #ffedd5 !important; }
+.theme-oled[data-accent="orange"] .bg-primary-500 { background-color: #f97316 !important; }
+.theme-oled[data-accent="orange"] .border-primary-500 { border-color: #f97316 !important; }
+.theme-oled[data-accent="orange"] .dark\:bg-primary-900\/20 { background-color: #7c2d1233 !important; }
+.theme-oled[data-accent="orange"] .dark\:bg-primary-900\/30 { background-color: #7c2d124d !important; }
+.theme-oled[data-accent="orange"] .dark\:from-primary-900\/20 { --tw-gradient-from: #7c2d1233 !important; }
+.theme-oled[data-accent="orange"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #7c2d1233 !important; }
+.theme-oled[data-accent="orange"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #7c2d1233 !important; }
+.theme-oled[data-accent="orange"] .dark\:hover\:border-primary-700:hover { border-color: #c2410c !important; }
+.theme-oled[data-accent="orange"] .dark\:ring-primary-900 { --tw-ring-color: #7c2d12 !important; }
+.theme-oled[data-accent="orange"] .dark\:text-primary-400 { color: #fb923c !important; }
+.theme-oled[data-accent="orange"] .dark\:to-primary-950 { --tw-gradient-to: #431407 !important; }
+.theme-oled[data-accent="orange"] .focus\:ring-primary-400:focus { --tw-ring-color: #fb923c !important; }
+.theme-oled[data-accent="orange"] .from-primary-50 { --tw-gradient-from: #fff7ed !important; }
+.theme-oled[data-accent="orange"] .hover\:bg-primary-50:hover { background-color: #fff7ed !important; }
+.theme-oled[data-accent="orange"] .hover\:bg-primary-600:hover { background-color: #ea580c !important; }
+.theme-oled[data-accent="orange"] .hover\:border-primary-300:hover { border-color: #fdba74 !important; }
+.theme-oled[data-accent="orange"] .ring-primary-100 { --tw-ring-color: #ffedd5 !important; }
+.theme-oled[data-accent="orange"] .ring-primary-500 { --tw-ring-color: #f97316 !important; }
+.theme-oled[data-accent="orange"] .shadow-primary-500\/25 { --tw-shadow-color: #f9731640 !important; }
+.theme-oled[data-accent="orange"] .text-primary-500 { color: #f97316 !important; }
+.theme-oled[data-accent="orange"] .text-primary-600 { color: #ea580c !important; }
+.theme-oled[data-accent="orange"] .to-primary-50 { --tw-gradient-to: #fff7ed !important; }
+
+.theme-oled[data-accent="lime"] .bg-primary-50 { background-color: #f7fee7 !important; }
+.theme-oled[data-accent="lime"] .bg-primary-100 { background-color: #ecfccb !important; }
+.theme-oled[data-accent="lime"] .bg-primary-500 { background-color: #84cc16 !important; }
+.theme-oled[data-accent="lime"] .border-primary-500 { border-color: #84cc16 !important; }
+.theme-oled[data-accent="lime"] .dark\:bg-primary-900\/20 { background-color: #36531433 !important; }
+.theme-oled[data-accent="lime"] .dark\:bg-primary-900\/30 { background-color: #3653144d !important; }
+.theme-oled[data-accent="lime"] .dark\:from-primary-900\/20 { --tw-gradient-from: #36531433 !important; }
+.theme-oled[data-accent="lime"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #36531433 !important; }
+.theme-oled[data-accent="lime"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #36531433 !important; }
+.theme-oled[data-accent="lime"] .dark\:hover\:border-primary-700:hover { border-color: #4d7c0f !important; }
+.theme-oled[data-accent="lime"] .dark\:ring-primary-900 { --tw-ring-color: #365314 !important; }
+.theme-oled[data-accent="lime"] .dark\:text-primary-400 { color: #a3e635 !important; }
+.theme-oled[data-accent="lime"] .dark\:to-primary-950 { --tw-gradient-to: #1a2e05 !important; }
+.theme-oled[data-accent="lime"] .focus\:ring-primary-400:focus { --tw-ring-color: #a3e635 !important; }
+.theme-oled[data-accent="lime"] .from-primary-50 { --tw-gradient-from: #f7fee7 !important; }
+.theme-oled[data-accent="lime"] .hover\:bg-primary-50:hover { background-color: #f7fee7 !important; }
+.theme-oled[data-accent="lime"] .hover\:bg-primary-600:hover { background-color: #65a30d !important; }
+.theme-oled[data-accent="lime"] .hover\:border-primary-300:hover { border-color: #bef264 !important; }
+.theme-oled[data-accent="lime"] .ring-primary-100 { --tw-ring-color: #ecfccb !important; }
+.theme-oled[data-accent="lime"] .ring-primary-500 { --tw-ring-color: #84cc16 !important; }
+.theme-oled[data-accent="lime"] .shadow-primary-500\/25 { --tw-shadow-color: #84cc1640 !important; }
+.theme-oled[data-accent="lime"] .text-primary-500 { color: #84cc16 !important; }
+.theme-oled[data-accent="lime"] .text-primary-600 { color: #65a30d !important; }
+.theme-oled[data-accent="lime"] .to-primary-50 { --tw-gradient-to: #f7fee7 !important; }
+
+.theme-oled[data-accent="teal"] .bg-primary-50 { background-color: #f0fdfa !important; }
+.theme-oled[data-accent="teal"] .bg-primary-100 { background-color: #ccfbf1 !important; }
+.theme-oled[data-accent="teal"] .bg-primary-500 { background-color: #14b8a6 !important; }
+.theme-oled[data-accent="teal"] .border-primary-500 { border-color: #14b8a6 !important; }
+.theme-oled[data-accent="teal"] .dark\:bg-primary-900\/20 { background-color: #134e4a33 !important; }
+.theme-oled[data-accent="teal"] .dark\:bg-primary-900\/30 { background-color: #134e4a4d !important; }
+.theme-oled[data-accent="teal"] .dark\:from-primary-900\/20 { --tw-gradient-from: #134e4a33 !important; }
+.theme-oled[data-accent="teal"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #134e4a33 !important; }
+.theme-oled[data-accent="teal"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #134e4a33 !important; }
+.theme-oled[data-accent="teal"] .dark\:hover\:border-primary-700:hover { border-color: #0f766e !important; }
+.theme-oled[data-accent="teal"] .dark\:ring-primary-900 { --tw-ring-color: #134e4a !important; }
+.theme-oled[data-accent="teal"] .dark\:text-primary-400 { color: #2dd4bf !important; }
+.theme-oled[data-accent="teal"] .dark\:to-primary-950 { --tw-gradient-to: #042f2e !important; }
+.theme-oled[data-accent="teal"] .focus\:ring-primary-400:focus { --tw-ring-color: #2dd4bf !important; }
+.theme-oled[data-accent="teal"] .from-primary-50 { --tw-gradient-from: #f0fdfa !important; }
+.theme-oled[data-accent="teal"] .hover\:bg-primary-50:hover { background-color: #f0fdfa !important; }
+.theme-oled[data-accent="teal"] .hover\:bg-primary-600:hover { background-color: #0d9488 !important; }
+.theme-oled[data-accent="teal"] .hover\:border-primary-300:hover { border-color: #5eead4 !important; }
+.theme-oled[data-accent="teal"] .ring-primary-100 { --tw-ring-color: #ccfbf1 !important; }
+.theme-oled[data-accent="teal"] .ring-primary-500 { --tw-ring-color: #14b8a6 !important; }
+.theme-oled[data-accent="teal"] .shadow-primary-500\/25 { --tw-shadow-color: #14b8a640 !important; }
+.theme-oled[data-accent="teal"] .text-primary-500 { color: #14b8a6 !important; }
+.theme-oled[data-accent="teal"] .text-primary-600 { color: #0d9488 !important; }
+.theme-oled[data-accent="teal"] .to-primary-50 { --tw-gradient-to: #f0fdfa !important; }
+
+.theme-oled[data-accent="red"] .bg-primary-50 { background-color: #fef2f2 !important; }
+.theme-oled[data-accent="red"] .bg-primary-100 { background-color: #fee2e2 !important; }
+.theme-oled[data-accent="red"] .bg-primary-500 { background-color: #ef4444 !important; }
+.theme-oled[data-accent="red"] .border-primary-500 { border-color: #ef4444 !important; }
+.theme-oled[data-accent="red"] .dark\:bg-primary-900\/20 { background-color: #7f1d1d33 !important; }
+.theme-oled[data-accent="red"] .dark\:bg-primary-900\/30 { background-color: #7f1d1d4d !important; }
+.theme-oled[data-accent="red"] .dark\:from-primary-900\/20 { --tw-gradient-from: #7f1d1d33 !important; }
+.theme-oled[data-accent="red"] .dark\:to-indigo-900\/20 { --tw-gradient-to: #7f1d1d33 !important; }
+.theme-oled[data-accent="red"] .dark\:hover\:bg-primary-900\/20:hover { background-color: #7f1d1d33 !important; }
+.theme-oled[data-accent="red"] .dark\:hover\:border-primary-700:hover { border-color: #b91c1c !important; }
+.theme-oled[data-accent="red"] .dark\:ring-primary-900 { --tw-ring-color: #7f1d1d !important; }
+.theme-oled[data-accent="red"] .dark\:text-primary-400 { color: #f87171 !important; }
+.theme-oled[data-accent="red"] .dark\:to-primary-950 { --tw-gradient-to: #450a0a !important; }
+.theme-oled[data-accent="red"] .focus\:ring-primary-400:focus { --tw-ring-color: #f87171 !important; }
+.theme-oled[data-accent="red"] .from-primary-50 { --tw-gradient-from: #fef2f2 !important; }
+.theme-oled[data-accent="red"] .hover\:bg-primary-50:hover { background-color: #fef2f2 !important; }
+.theme-oled[data-accent="red"] .hover\:bg-primary-600:hover { background-color: #dc2626 !important; }
+.theme-oled[data-accent="red"] .hover\:border-primary-300:hover { border-color: #fca5a5 !important; }
+.theme-oled[data-accent="red"] .ring-primary-100 { --tw-ring-color: #fee2e2 !important; }
+.theme-oled[data-accent="red"] .ring-primary-500 { --tw-ring-color: #ef4444 !important; }
+.theme-oled[data-accent="red"] .shadow-primary-500\/25 { --tw-shadow-color: #ef444440 !important; }
+.theme-oled[data-accent="red"] .text-primary-500 { color: #ef4444 !important; }
+.theme-oled[data-accent="red"] .text-primary-600 { color: #dc2626 !important; }
+.theme-oled[data-accent="red"] .to-primary-50 { --tw-gradient-to: #fef2f2 !important; }

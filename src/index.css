@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import './styles/accent-themes.css';
 
 @tailwind base;
 @tailwind components;
@@ -76,14 +77,20 @@
 .theme-oled ::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.15);
 }
-/* Modals, dropdowns, and toasts (ConfirmDialog, TransactionForm, TagsPage,
-   BudgetForm, CategoryForm, AccountForm, QuickAddModal, GlobalSearchOverlay,
-   Header's reminders/user popovers, BottomNav's More popover, Toast, etc.)
-   aren't covered by .card — they're identified here by the same dark
-   surface + shadow combination every one of them uses, which excludes
-   incidental same-colored surfaces without a shadow (e.g. filter-tab
-   tracks). Shadows are pointless on true black and cost battery on OLED
-   panels, so they're replaced with the same subtle border .card uses. */
+/* Any remaining dark:bg-gray-800/900 surface (segmented controls, icon
+   circles, modal header strips, popovers, toasts, buttons, etc.) that
+   isn't already covered by .card/header/aside/nav above — blanket-covered
+   here rather than enumerated per component, since Tailwind's utility
+   classes are the only theming hook available without touching feature
+   files. #0a0a0a (not pure #000) so these stay distinguishable from the
+   page background behind them. */
+.theme-oled .dark\:bg-gray-800,
+.theme-oled .dark\:bg-gray-900 {
+  background-color: #0a0a0a !important;
+}
+/* Elevated surfaces (modals, popovers, toasts) additionally drop their
+   shadow for pure black with a hairline border instead — shadows are
+   pointless on true black and cost battery on OLED panels. */
 .theme-oled .dark\:bg-gray-800.shadow-xl,
 .theme-oled .dark\:bg-gray-800.shadow-2xl,
 .theme-oled .dark\:bg-gray-800.shadow-lg,
@@ -96,146 +103,42 @@
   box-shadow: none !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
+/* AccountForm's inset "Account Classification" panel — an opacity variant
+   Tailwind class (bg-gray-900/40), not caught by the blanket rule above
+   since Tailwind bakes the opacity into a distinct class name. Kept as a
+   faint tint rather than pure black so it stays visible as a sub-panel
+   against the (also black) modal body around it. */
+.theme-oled .dark\:bg-gray-900\/40 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
 
 /* ═══════════════════════════════════════════════════════════
-   CYBERPUNK TERMINAL THEME
-   Recharts chart colors are hardcoded — chart fills remain
-   the default palette in this theme (known limitation).
+   LIGHT THEME — warm pastel restyle (replaces stark white)
    ═══════════════════════════════════════════════════════════ */
-
-/* --- Keyframes --- */
-@keyframes cp-blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
+.theme-light body {
+  background-color: #faf7f4;
 }
-
-/* --- CSS custom properties scoped to cyberpunk --- */
-.theme-cyberpunk {
-  --cp-green:      #00FF41;
-  --cp-green-dim:  #00CC33;
-  --cp-green-dark: #008F11;
-  --cp-magenta:    #FF00FF;
-  --cp-cyan:       #00FFFF;
-  --cp-red:        #FF0040;
-  --cp-border:     rgba(0, 255, 65, 0.4);
-  --cp-border-dim: rgba(0, 255, 65, 0.2);
+.theme-light .card,
+.theme-light .bg-white {
+  background-color: #fffaf5;
 }
-
-/* --- Body base --- */
-.theme-cyberpunk body {
-  background-color: #000000 !important;
-  color: #00FF41 !important;
-  font-family: 'Courier New', Courier, monospace !important;
-  letter-spacing: 0.05em;
+.theme-light .card {
+  border-color: rgba(146, 108, 71, 0.12);
 }
-
-/* Scanline overlay — purely cosmetic, never blocks interaction */
-.theme-cyberpunk body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 1px,
-    rgba(0, 0, 0, 0.04) 1px,
-    rgba(0, 0, 0, 0.04) 2px
-  );
+.theme-light .bg-gray-50 {
+  background-color: #f5efe7;
 }
-
-/* --- Scrollbar --- */
-.theme-cyberpunk ::-webkit-scrollbar-thumb {
-  background: #008F11 !important;
-  border-radius: 0 !important;
+.theme-light header,
+.theme-light nav {
+  background-color: rgba(255, 250, 245, 0.92) !important;
 }
-
-/* --- Background overrides --- */
-.theme-cyberpunk .bg-gray-50,
-.theme-cyberpunk .dark\:bg-gray-950 {
-  background-color: #000000 !important;
+.theme-light .form-input {
+  background-color: #fffaf5;
+  border-color: rgba(146, 108, 71, 0.2);
 }
-
-/* Main layout wrapper */
-.theme-cyberpunk .flex.h-screen {
-  background-color: #000000 !important;
+.theme-light .btn-secondary {
+  border-color: rgba(146, 108, 71, 0.25);
 }
-
-/* --- Cards --- */
-.theme-cyberpunk .card {
-  background-color: #000000 !important;
-  border: 1px solid var(--cp-border-dim) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+.theme-light ::-webkit-scrollbar-thumb {
+  background-color: rgba(146, 108, 71, 0.25);
 }
-
-/* --- Buttons --- */
-.theme-cyberpunk .btn-primary {
-  background-color: #000000 !important;
-  border: 1px solid #00FF41 !important;
-  color: #00FF41 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.theme-cyberpunk .btn-primary:hover {
-  background-color: rgba(0, 255, 65, 0.1) !important;
-}
-.theme-cyberpunk .btn-secondary {
-  background-color: #000000 !important;
-  border: 1px solid var(--cp-border) !important;
-  color: #00CC33 !important;
-  border-radius: 0 !important;
-}
-
-/* --- Form inputs --- */
-.theme-cyberpunk .form-input {
-  background-color: #000000 !important;
-  border: 1px solid var(--cp-border-dim) !important;
-  color: #00FF41 !important;
-  border-radius: 0 !important;
-  font-family: 'Courier New', Courier, monospace !important;
-}
-.theme-cyberpunk .form-input:focus {
-  border-color: #00FF41 !important;
-  box-shadow: 0 0 0 1px #00FF41 !important;
-}
-.theme-cyberpunk .form-input::placeholder {
-  color: #008F11 !important;
-  opacity: 1;
-}
-
-/* --- Badges --- */
-.theme-cyberpunk .badge {
-  color: #FF00FF !important;
-  background-color: rgba(255, 0, 255, 0.1) !important;
-  border-radius: 0 !important;
-  border: 1px solid rgba(255, 0, 255, 0.3) !important;
-}
-
-/* --- Universal font override --- */
-.theme-cyberpunk * {
-  font-family: 'Courier New', Courier, monospace !important;
-}
-
-/* --- Blinking cursor helper class --- */
-.cp-blink {
-  animation: cp-blink 0.8s step-end infinite;
-}
-
-/* --- Segmented progress bar --- */
-.cp-seg-bar {
-  display: flex;
-  gap: 2px;
-  height: 10px;
-}
-.cp-seg-bar .cp-seg {
-  flex: 1;
-  height: 100%;
-}
-.cp-seg-bar .cp-seg.filled-green  { background-color: #00FF41; }
-.cp-seg-bar .cp-seg.filled-yellow { background-color: #FFFF00; }
-.cp-seg-bar .cp-seg.filled-red    { background-color: #FF0040; }
-.cp-seg-bar .cp-seg.empty         { background-color: rgba(0, 255, 65, 0.12); border: 1px solid rgba(0, 255, 65, 0.15); }
