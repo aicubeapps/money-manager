@@ -111,6 +111,34 @@ export const getWeeklyCategorySpend = (
   return buckets;
 };
 
+// Spend per unbudgeted category for a given month/year. Groups expense
+// transactions by categoryId, skipping any category present in
+// budgetedCategoryIds and any transaction excluded via budget-excluded tags.
+// Returns entries sorted by spend descending.
+export const getUnaccountedSpend = (
+  transactions: Transaction[],
+  tags: Tag[],
+  budgetedCategoryIds: Set<string>,
+  month: number,
+  year: number
+): { categoryId: string; spent: number }[] => {
+  const spendMap: Record<string, number> = {};
+  transactions
+    .filter((t) => t.type === 'expense' && t.categoryId && !budgetedCategoryIds.has(t.categoryId))
+    .filter((t) => {
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === month && d.getFullYear() === year;
+    })
+    .filter((t) => !isExcludedFromBudget(t, tags))
+    .forEach((t) => {
+      const id = t.categoryId!;
+      spendMap[id] = (spendMap[id] || 0) + t.amount;
+    });
+  return Object.entries(spendMap)
+    .map(([categoryId, spent]) => ({ categoryId, spent }))
+    .sort((a, b) => b.spent - a.spent);
+};
+
 // True if a category's spend exceeds its allocated amount for a budget.
 export const isCategoryOvershot = (
   budget: Budget,

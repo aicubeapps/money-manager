@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { HiPencil, HiTrash, HiPlus } from 'react-icons/hi';
+import { HiPencil, HiTrash, HiPlus, HiChevronDown, HiChevronUp } from 'react-icons/hi';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { getMiscAmount, sumAllocations } from '../../utils/budget';
-import { getCategorySpend, getTotalSpend } from '../../utils/budgetSpend';
+import { getCategorySpend, getTotalSpend, getUnaccountedSpend } from '../../utils/budgetSpend';
 import type { Budget, Category, Tag, Transaction } from '../../types';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
@@ -25,6 +25,7 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
   const formatCurrency = useFormatCurrency();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [drillDown, setDrillDown] = useState<{ title: string; filter: TransactionFilterDescriptor } | null>(null);
+  const [unaccountedExpanded, setUnaccountedExpanded] = useState(false);
 
   const getCategoryInfo = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId);
@@ -46,7 +47,6 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
     (sum, b) => sum + getTotalSpend(transactions, tags, b.month, b.year),
     0
   );
-  const isGlobalOverBudget = totalSpentAcrossBudgets > totalBudgeted;
   const categoryContributions = budgets
     .flatMap((b) => b.allocations.map((a) => ({ budget: b, categoryId: a.categoryId })))
     .map(({ budget, categoryId }) => {
@@ -64,6 +64,19 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
       ...c,
       percent: totalSpentAcrossBudgets > 0 ? (c.spend / totalSpentAcrossBudgets) * 100 : 0,
     }));
+
+  const primaryBudget = budgets[0];
+  const budgetedCategoryIds = new Set(budgets.flatMap((b) => b.allocations.map((a) => a.categoryId)));
+  const unaccountedCategories = primaryBudget
+    ? getUnaccountedSpend(transactions, tags, budgetedCategoryIds, primaryBudget.month, primaryBudget.year)
+        .map((c) => {
+          const info = getCategoryInfo(c.categoryId);
+          return { ...c, name: info.name, color: info.color };
+        })
+    : [];
+  const totalUnaccountedSpend = unaccountedCategories.reduce((sum, c) => sum + c.spent, 0);
+  const totalBudgetedCategorySpend = categoryContributions.reduce((sum, c) => sum + c.spend, 0);
+  const barDenominator = Math.max(totalBudgeted, totalBudgetedCategorySpend + totalUnaccountedSpend) || 1;
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -85,22 +98,27 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
             <span>{formatCurrency(totalSpentAcrossBudgets)} of {formatCurrency(totalBudgeted)}</span>
           </div>
           <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
-            {isGlobalOverBudget ? (
-              <div className="h-full bg-red-500 flex-shrink-0" style={{ width: '100%' }} />
-            ) : (
-              categoryContributions.map((c) => (
-                <div
-                  key={c.categoryId}
-                  className="h-full flex-shrink-0"
-                  style={{
-                    width: `${totalBudgeted > 0 ? (c.spend / totalBudgeted) * 100 : 0}%`,
-                    backgroundColor: c.color || '#6366f1',
-                  }}
-                />
-              ))
+            {categoryContributions.map((c) => (
+              <div
+                key={c.categoryId}
+                className="h-full flex-shrink-0"
+                style={{
+                  width: `${(c.spend / barDenominator) * 100}%`,
+                  backgroundColor: c.color || '#6366f1',
+                }}
+              />
+            ))}
+            {totalUnaccountedSpend > 0 && (
+              <div
+                className="h-full flex-shrink-0"
+                style={{
+                  width: `${(totalUnaccountedSpend / barDenominator) * 100}%`,
+                  backgroundColor: '#ef4444',
+                }}
+              />
             )}
           </div>
-          {categoryContributions.length > 0 && (
+          {(categoryContributions.length > 0 || totalUnaccountedSpend > 0) && (
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-gray-500 dark:text-gray-400">
               {categoryContributions.map((c) => (
                 <span key={c.categoryId} className="flex items-center gap-1">
@@ -108,6 +126,12 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
                   {c.percent.toFixed(0)}%
                 </span>
               ))}
+              {totalUnaccountedSpend > 0 && (
+                <span className="flex items-center gap-1">
+                  <span className="font-medium text-red-600 dark:text-red-400">Unaccounted</span>
+                  {totalSpentAcrossBudgets > 0 ? ((totalUnaccountedSpend / totalSpentAcrossBudgets) * 100).toFixed(0) : 0}%
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -205,6 +229,57 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Unaccounted spend — categories with expense transactions this month
+          but no budget allocation. Collapsed into a single red summary row
+          that expands to show per-category detail and drill-down. */}
+      {budgets.length > 0 && unaccountedCategories.length > 0 && (
+        <div className="card p-4">
+          <button
+            className="w-full flex items-center justify-between text-sm"
+            onClick={() => setUnaccountedExpanded((v) => !v)}
+            aria-expanded={unaccountedExpanded}
+          >
+            <span className="font-semibold text-red-600 dark:text-red-400">Unaccounted</span>
+            <span className="flex items-center gap-2">
+              <span className="font-semibold text-red-600 dark:text-red-400">
+                {formatCurrency(totalUnaccountedSpend)}
+              </span>
+              {unaccountedExpanded
+                ? <HiChevronUp className="w-4 h-4 text-red-400" />
+                : <HiChevronDown className="w-4 h-4 text-red-400" />}
+            </span>
+          </button>
+
+          {unaccountedExpanded && (
+            <div className="mt-3 space-y-0.5 border-t border-gray-100 dark:border-gray-700 pt-3">
+              {unaccountedCategories.map((c) => (
+                <div
+                  key={c.categoryId}
+                  onClick={() => primaryBudget && setDrillDown({
+                    title: `${c.name} · ${MONTH_NAMES[primaryBudget.month - 1]} ${primaryBudget.year}`,
+                    filter: { kind: 'budgetCategory', categoryId: c.categoryId, month: primaryBudget.month, year: primaryBudget.year },
+                  })}
+                  role="button"
+                  tabIndex={0}
+                  className="flex items-center justify-between text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg -mx-1.5 px-1.5 py-1.5 transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: c.color || '#ef4444' }}
+                    />
+                    <span className="text-gray-700 dark:text-gray-300 font-medium">{c.name}</span>
+                  </span>
+                  <span className="font-semibold text-red-600 dark:text-red-400">
+                    {formatCurrency(c.spent)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
