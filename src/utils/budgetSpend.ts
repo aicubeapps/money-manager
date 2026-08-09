@@ -50,6 +50,67 @@ export const getBudgetCategorySpends = (
   return result;
 };
 
+// Total expense spend across all categories for a given month/year, skipping
+// budget-excluded-tag transactions — the single source of truth for "total
+// expenditure this month" shared by the Budgets page's global progress bar
+// and the dashboard's Budget Pace card, so both always show the same figure.
+export const getTotalSpend = (
+  transactions: Transaction[],
+  tags: Tag[],
+  month: number,
+  year: number
+): number => {
+  return transactions
+    .filter((t) => t.type === 'expense')
+    .filter((t) => {
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === month && d.getFullYear() === year;
+    })
+    .filter((t) => !isExcludedFromBudget(t, tags))
+    .reduce((sum, t) => sum + t.amount, 0);
+};
+
+const WEEKS_PER_MONTH = 4;
+
+export interface WeeklyCategorySpend {
+  weekLabel: string;
+  /** categoryId -> amount spent in that category during this week. */
+  [categoryId: string]: number | string;
+}
+
+// Buckets each budgeted category's spend into 4 week-of-month buckets (days
+// 1-7, 8-14, 15-21, 22-end — the last bucket absorbs the extra 1-3 days a
+// 29/30/31-day month has beyond 28), for the weekly stacked bar chart. Only
+// categories present in the budget's allocations are included, matching the
+// category-progress-bars section directly above it.
+export const getWeeklyCategorySpend = (
+  budget: Budget,
+  transactions: Transaction[],
+  tags: Tag[]
+): WeeklyCategorySpend[] => {
+  const categoryIds = new Set(budget.allocations.map((a) => a.categoryId));
+  const buckets: WeeklyCategorySpend[] = Array.from({ length: WEEKS_PER_MONTH }, (_, i) => ({
+    weekLabel: `Week ${i + 1}`,
+  }));
+
+  transactions
+    .filter((t) => t.type === 'expense' && t.categoryId && categoryIds.has(t.categoryId))
+    .filter((t) => {
+      const d = new Date(t.date);
+      return d.getMonth() + 1 === budget.month && d.getFullYear() === budget.year;
+    })
+    .filter((t) => !isExcludedFromBudget(t, tags))
+    .forEach((t) => {
+      const dayOfMonth = new Date(t.date).getDate();
+      const weekIndex = Math.min(Math.floor((dayOfMonth - 1) / 7), WEEKS_PER_MONTH - 1);
+      const bucket = buckets[weekIndex];
+      const categoryId = t.categoryId!;
+      bucket[categoryId] = (Number(bucket[categoryId]) || 0) + t.amount;
+    });
+
+  return buckets;
+};
+
 // True if a category's spend exceeds its allocated amount for a budget.
 export const isCategoryOvershot = (
   budget: Budget,

@@ -13,6 +13,7 @@ const accountSchema = z.object({
   creditLimit: z.number().optional(),
   statementDate: z.number().min(1).max(31).optional(),
   dueDate: z.number().min(1).max(31).optional(),
+  color: z.string().nullable().optional(),
 });
 
 type FormData = z.infer<typeof accountSchema>;
@@ -29,6 +30,21 @@ const ACCOUNT_TYPES = [
   { value: 'credit', label: '💳 Credit Card' },
   { value: 'cash', label: '💵 Cash Wallet' },
   { value: 'upi', label: '📱 UPI Wallet' },
+] as const;
+
+const ACCOUNT_COLORS = [
+  { label: 'Red', value: '#ef4444' },
+  { label: 'Orange', value: '#f97316' },
+  { label: 'Amber', value: '#f59e0b' },
+  { label: 'Yellow', value: '#eab308' },
+  { label: 'Lime', value: '#84cc16' },
+  { label: 'Emerald', value: '#10b981' },
+  { label: 'Cyan', value: '#06b6d4' },
+  { label: 'Sky', value: '#0ea5e9' },
+  { label: 'Indigo', value: '#6366f1' },
+  { label: 'Violet', value: '#8b5cf6' },
+  { label: 'Pink', value: '#ec4899' },
+  { label: 'Rose', value: '#f43f5e' },
 ] as const;
 
 const getAccountGroupFromType = (type: FormData['type']): AccountGroup => {
@@ -79,16 +95,19 @@ const AccountForm = ({ account, onSave, onCancel }: AccountFormProps) => {
           creditLimit: account.creditLimit,
           statementDate: account.statementDate,
           dueDate: account.dueDate,
+          color: account.color ?? null,
         }
       : {
           name: '',
           type: 'savings',
           openingBalance: 0,
           openingDate: new Date().toISOString().split('T')[0],
+          color: null,
         },
   });
 
   const accountType = watch('type');
+  const colorValue = watch('color');
   const derivedAccountGroup = getAccountGroupFromType(accountType);
 
   useEffect(() => {
@@ -101,6 +120,7 @@ const AccountForm = ({ account, onSave, onCancel }: AccountFormProps) => {
         creditLimit: account.creditLimit,
         statementDate: account.statementDate,
         dueDate: account.dueDate,
+        color: account.color ?? null,
       });
     } else {
       reset({
@@ -108,6 +128,7 @@ const AccountForm = ({ account, onSave, onCancel }: AccountFormProps) => {
         type: 'savings',
         openingBalance: 0,
         openingDate: new Date().toISOString().split('T')[0],
+        color: null,
       });
     }
   }, [account, reset]);
@@ -174,6 +195,34 @@ const AccountForm = ({ account, onSave, onCancel }: AccountFormProps) => {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="form-label">Tag Color</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setValue('color', null)}
+                title="None"
+                className={`w-8 h-8 rounded-full border-2 border-dashed flex items-center justify-center text-gray-400 transition-all ${
+                  !colorValue ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-gray-800 scale-110 border-gray-400' : 'border-gray-300 dark:border-gray-600 hover:scale-105'
+                }`}
+              >
+                <HiX className="w-3.5 h-3.5" />
+              </button>
+              {ACCOUNT_COLORS.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setValue('color', value)}
+                  title={label}
+                  className={`w-8 h-8 rounded-full transition-all ${
+                    colorValue === value ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-gray-800 scale-110' : 'hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: value }}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-3 py-2">

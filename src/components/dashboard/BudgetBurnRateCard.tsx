@@ -9,16 +9,30 @@ const BudgetBurnRateCard = ({ burnRate }: BudgetBurnRateCardProps) => {
   const formatCurrency = useFormatCurrency();
   if (!burnRate.hasBudget) return null;
 
-  const { spentSoFar, remainingBudget, estimatedDaysLeft, calendarDaysLeft } = burnRate;
+  const { overallBudget, spentSoFar, remainingBudget, estimatedDaysLeft, calendarDaysLeft } = burnRate;
 
   const isOverBudget = remainingBudget < 0;
   const noSpendYet = spentSoFar === 0;
+  const percentSpent = overallBudget > 0 ? (spentSoFar / overallBudget) * 100 : 0;
 
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Budget Pace</h3>
         <span className="text-lg">⏱️</span>
+      </div>
+
+      <div className="mb-3">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+          <span>{formatCurrency(spentSoFar)} spent</span>
+          <span>{formatCurrency(overallBudget)} budget</span>
+        </div>
+        <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${isOverBudget ? 'bg-red-500' : 'bg-primary-500'}`}
+            style={{ width: `${Math.min(percentSpent, 100)}%` }}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

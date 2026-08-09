@@ -6,7 +6,7 @@ import { useBudgets } from './useBudgets';
 import { useTags } from './useTags';
 import { getDateRange, getPreviousPeriod } from '../utils/dateUtils';
 import { calculateAccountBalance } from '../utils/accountBalance';
-import { isExcludedFromBudget } from '../utils/budgetSpend';
+import { getTotalSpend } from '../utils/budgetSpend';
 import type { TimeView } from '../utils/dateUtils';
 import {
   startOfDay, endOfDay,
@@ -195,7 +195,7 @@ export const useDashboardData = (view: TimeView = 'month', refreshKey = 0) => {
     const accountDistribution = accounts.map((acc) => ({
       name: acc.name,
       value: calculateAccountBalance(acc, transactions),
-      color: typeColorMap[acc.type] || '#6B7280',
+      color: acc.color || typeColorMap[acc.type] || '#6B7280',
     }));
 
     // Previous period change
@@ -218,19 +218,13 @@ export const useDashboardData = (view: TimeView = 'month', refreshKey = 0) => {
       const currentBudget = currentMonthBudgets[0];
       if (!currentBudget) return EMPTY_BURN_RATE;
 
-      const monthStart = startOfMonth(now);
       const daysInMonth = endOfMonth(now).getDate();
       const currentDay = now.getDate();
       const calendarDaysLeft = Math.max(daysInMonth - currentDay, 0);
 
-      const spentSoFar = transactions
-        .filter((t) => t.type === 'expense')
-        .filter((t) => {
-          const d = new Date(t.date);
-          return d >= monthStart && d <= now;
-        })
-        .filter((t) => !isExcludedFromBudget(t, tags))
-        .reduce((sum, t) => sum + t.amount, 0);
+      // Same calculation the Budgets page's global progress bar uses, so
+      // the two always agree on "total spent this month".
+      const spentSoFar = getTotalSpend(transactions, tags, currentBudget.month, currentBudget.year);
 
       const avgDailySpend = spentSoFar / currentDay;
       const remainingBudget = currentBudget.amount - spentSoFar;

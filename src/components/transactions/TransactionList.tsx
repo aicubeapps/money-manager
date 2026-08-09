@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { HiPencil, HiTrash, HiPlus, HiSearch, HiOutlinePaperClip } from 'react-icons/hi';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import type { Transaction, Account, Category, Tag } from '../../types';
@@ -31,6 +31,10 @@ const TYPE_STYLES: Record<string, { text: string; bg: string; label: string; pre
   transfer: { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', label: 'Transfer', prefix: '↔' },
 };
 
+const LONG_PRESS_MS = 500;
+const MENU_WIDTH = 150;
+const MENU_HEIGHT = 92;
+
 const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete, onAdd, compact = false }: TransactionListProps) => {
   const formatCurrency = useFormatCurrency();
   const { currentUser } = useAuth();
@@ -41,13 +45,57 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [viewingReceipt, setViewingReceipt] = useState<{ fileId: string; mimeType?: string | null } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ transaction: Transaction; x: number; y: number } | null>(null);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!currentUser) return;
     getTags(currentUser.uid).then(setAllTags).catch(() => {});
   }, [currentUser]);
 
+  // Dismiss the context menu on the hardware/gesture back button: pushes a
+  // throwaway history entry while it's open, and closeContextMenu() below
+  // undoes it via history.back() — the resulting popstate event (fired
+  // either by that call or by a real back-button press) is the single place
+  // that actually clears the menu state, so both paths converge correctly.
+  useEffect(() => {
+    if (!contextMenu) return;
+    window.history.pushState({ txContextMenu: true }, '');
+    const handlePopState = () => setContextMenu(null);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [contextMenu]);
+
+  const clearPressTimer = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+
+  const handleRowPointerDown = (transaction: Transaction, e: React.PointerEvent) => {
+    const { clientX, clientY } = e;
+    clearPressTimer();
+    pressTimerRef.current = setTimeout(() => {
+      pressTimerRef.current = null;
+      setContextMenu({
+        transaction,
+        x: Math.min(clientX, window.innerWidth - MENU_WIDTH - 8),
+        y: Math.min(clientY, window.innerHeight - MENU_HEIGHT - 8),
+      });
+    }, LONG_PRESS_MS);
+  };
+
+  const closeContextMenu = () => {
+    if (window.history.state?.txContextMenu) {
+      window.history.back();
+    } else {
+      setContextMenu(null);
+    }
+  };
+
   const getAccountName = (id: string) => accounts.find((a) => a.id === id)?.name || 'Unknown';
+  const getAccountColor = (id: string) => accounts.find((a) => a.id === id)?.color;
   const getCategoryName = (id?: string) => {
     if (!id) return null;
     const cat = categories.find((c) => c.id === id);
@@ -204,14 +252,21 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
                 {txns.map((transaction) => {
                   const style = TYPE_STYLES[transaction.type];
                   const cat = getCategoryName(transaction.categoryId);
+                  const accentColor = getAccountColor(transaction.accountId);
 
                   return (
                     <div
                       key={transaction.id}
                       onClick={compact ? () => onEdit?.(transaction) : undefined}
+                      onPointerDown={!compact ? (e) => handleRowPointerDown(transaction, e) : undefined}
+                      onPointerUp={!compact ? clearPressTimer : undefined}
+                      onPointerLeave={!compact ? clearPressTimer : undefined}
+                      onPointerCancel={!compact ? clearPressTimer : undefined}
+                      onContextMenu={!compact ? (e) => e.preventDefault() : undefined}
                       role={compact ? 'button' : undefined}
                       tabIndex={compact ? 0 : undefined}
-                      className={`card p-3 flex items-center gap-3 hover:shadow-md transition-all duration-150 group ${compact ? 'cursor-pointer' : ''}`}
+                      className={`card p-3 flex items-center gap-3 hover:shadow-md transition-all duration-150 select-none ${compact ? 'cursor-pointer' : ''}`}
+                      style={accentColor ? { borderLeft: `4px solid ${accentColor}`, backgroundColor: `${accentColor}14` } : undefined}
                     >
                       {/* Category icon — rendered plainly, no background chip */}
                       <div className="w-11 h-11 flex items-center justify-center flex-shrink-0 text-2xl">
@@ -261,24 +316,6 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
                         <div className={`text-base font-bold ${style.text}`}>
                           {style.prefix !== '↔' ? style.prefix : ''}{formatCurrency(transaction.amount)}
                         </div>
-                        {!compact && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => onEdit?.(transaction)}
-                              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <HiPencil className="w-4 h-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(transaction.id)}
-                              className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                              title="Delete"
-                            >
-                              <HiTrash className="w-4 h-4 text-gray-400 hover:text-red-500" />
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
@@ -287,6 +324,37 @@ const TransactionList = ({ transactions, accounts, categories, onEdit, onDelete,
             </div>
           ))}
         </div>
+      )}
+
+      {contextMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={closeContextMenu} />
+          <div
+            className="fixed z-50 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 animate-fade-in"
+            style={{ left: contextMenu.x, top: contextMenu.y, width: MENU_WIDTH }}
+          >
+            <button
+              onClick={() => {
+                const transaction = contextMenu.transaction;
+                closeContextMenu();
+                onEdit?.(transaction);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <HiPencil className="w-4 h-4" /> Edit
+            </button>
+            <button
+              onClick={() => {
+                const transactionId = contextMenu.transaction.id;
+                closeContextMenu();
+                setDeleteTarget(transactionId);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >
+              <HiTrash className="w-4 h-4" /> Delete
+            </button>
+          </div>
+        </>
       )}
 
       <ConfirmDialog

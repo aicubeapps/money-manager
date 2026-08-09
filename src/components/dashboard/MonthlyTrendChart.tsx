@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush } from 'recharts';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 
 interface MonthlyTrendChartProps {
@@ -17,18 +17,18 @@ const MonthlyTrendChart = ({ data }: MonthlyTrendChartProps) => {
 
   return (
     <ResponsiveContainer width="100%" height={data.length > 4 ? 340 : 300}>
-      <LineChart data={data}>
+      <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="month" />
         <YAxis tickFormatter={(value) => formatCurrency(value as number)} />
         <Tooltip formatter={(value) => formatCurrency(value as number)} />
         <Legend />
-        <Line type="monotone" dataKey="income" stroke="#22C55E" strokeWidth={2} />
-        <Line type="monotone" dataKey="expense" stroke="#EF4444" strokeWidth={2} />
+        <Bar dataKey="income" fill="#22C55E" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="expense" fill="#EF4444" radius={[4, 4, 0, 0]} />
         {data.length > 4 && (
           <Brush dataKey="month" height={24} travellerWidth={8} stroke="#6366F1" fill="#94a3b833" />
         )}
-      </LineChart>
+      </BarChart>
     </ResponsiveContainer>
   );
 };

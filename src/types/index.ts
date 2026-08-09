@@ -28,6 +28,10 @@ export interface Account {
   creditLimit?: number;
   statementDate?: number;
   dueDate?: number;
+  /** User-chosen tag color (hex string). Drives the transaction-card left
+   * border/tint and the account's Treemap cell fill; falls back to the
+   * type-based default palette wherever it's unset. */
+  color?: string;
   createdAt: Date;
   updatedAt: Date;
 }

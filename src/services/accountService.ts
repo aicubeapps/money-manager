@@ -24,6 +24,9 @@ type AccountCreateInput = {
   creditLimit?: number;
   statementDate?: number;
   dueDate?: number;
+  /** Hex string, or null to explicitly clear back to "None" on an update
+   * (sanitizeFirestoreData only strips undefined, not null). */
+  color?: string | null;
 };
 
 type AccountUpdateInput = Partial<AccountCreateInput>;
@@ -184,6 +187,8 @@ export const fetchAccounts = async (userId: string) => {
         typeof data.statementDate === 'number' ? data.statementDate : undefined,
       dueDate:
         typeof data.dueDate === 'number' ? data.dueDate : undefined,
+      color:
+        typeof data.color === 'string' ? data.color : undefined,
     } as Account;
   });
 };

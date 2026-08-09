@@ -24,6 +24,7 @@ type AccountFormPayload = {
   creditLimit?: number;
   statementDate?: number;
   dueDate?: number;
+  color?: string | null;
 };
 
 const AccountListSkeleton = () => (

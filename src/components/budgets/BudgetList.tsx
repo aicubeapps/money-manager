@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { HiPencil, HiTrash, HiPlus } from 'react-icons/hi';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { getMiscAmount, sumAllocations } from '../../utils/budget';
-import { getCategorySpend } from '../../utils/budgetSpend';
+import { getCategorySpend, getTotalSpend } from '../../utils/budgetSpend';
 import type { Budget, Category, Tag, Transaction } from '../../types';
 import ConfirmDialog from '../common/ConfirmDialog';
 import EmptyState from '../common/EmptyState';
 import FilteredTransactionView, { type TransactionFilterDescriptor } from '../common/FilteredTransactionView';
+import BudgetWeeklyChart from './BudgetWeeklyChart';
 
 interface BudgetListProps {
   budgets: Budget[];
@@ -35,6 +36,31 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
 
   const totalBudgeted = budgets.reduce((sum, b) => sum + b.amount, 0);
 
+  // Global progress bar (4b): total budgeted vs. total expenditure across
+  // whatever budget(s) are currently shown (in practice always the single
+  // budget for the month BudgetsPage has navigated to — budgets here is
+  // already month/year-scoped by useBudgets). Category contribution % is
+  // computed against this same total so the legend always adds up to it.
+  const totalSpentAcrossBudgets = budgets.reduce(
+    (sum, b) => sum + getTotalSpend(transactions, tags, b.month, b.year),
+    0
+  );
+  const globalPercentage = totalBudgeted > 0 ? (totalSpentAcrossBudgets / totalBudgeted) * 100 : 0;
+  const isGlobalOverBudget = totalSpentAcrossBudgets > totalBudgeted;
+  const categoryContributions = budgets
+    .flatMap((b) => b.allocations.map((a) => ({ budget: b, categoryId: a.categoryId })))
+    .map(({ budget, categoryId }) => ({
+      categoryId,
+      name: getCategoryInfo(categoryId).name,
+      spend: getCategorySpend(transactions, tags, categoryId, budget.month, budget.year),
+    }))
+    .filter((c) => c.spend > 0)
+    .sort((a, b) => b.spend - a.spend)
+    .map((c) => ({
+      ...c,
+      percent: totalSpentAcrossBudgets > 0 ? (c.spend / totalSpentAcrossBudgets) * 100 : 0,
+    }));
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -47,11 +73,29 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
         </button>
       </div>
 
-      {/* Summary */}
+      {/* Global progress bar + category contribution legend */}
       {budgets.length > 0 && (
-        <div className="card p-3">
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Budgeted</div>
-          <div className="font-bold text-primary-600 dark:text-primary-400">{formatCurrency(totalBudgeted)}</div>
+        <div className="card p-4">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <span className="font-semibold text-gray-900 dark:text-white text-sm">Overall Progress</span>
+            <span>{formatCurrency(totalSpentAcrossBudgets)} of {formatCurrency(totalBudgeted)}</span>
+          </div>
+          <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${isGlobalOverBudget ? 'bg-red-500' : 'bg-primary-500'}`}
+              style={{ width: `${Math.min(globalPercentage, 100)}%` }}
+            />
+          </div>
+          {categoryContributions.length > 0 && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs text-gray-500 dark:text-gray-400">
+              {categoryContributions.map((c) => (
+                <span key={c.categoryId} className="flex items-center gap-1">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">{c.name}</span>
+                  {c.percent.toFixed(0)}%
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -86,10 +130,11 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-3">
                   {budget.allocations.map((allocation) => {
                     const { name, icon } = getCategoryInfo(allocation.categoryId);
                     const spend = getCategorySpend(transactions, tags, allocation.categoryId, budget.month, budget.year);
+                    const remaining = allocation.amount - spend;
                     const percentage = allocation.amount > 0 ? (spend / allocation.amount) * 100 : 0;
                     const isOver = percentage >= 100;
                     const isWarning = percentage >= 80 && !isOver;
@@ -103,22 +148,30 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
                         })}
                         role="button"
                         tabIndex={0}
-                        className="flex items-center justify-between text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg -mx-1.5 px-1.5 py-0.5 transition-colors"
+                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/40 rounded-lg -mx-1.5 px-1.5 py-1 transition-colors"
                       >
-                        <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
-                          <span>{icon}</span> {name}
-                          {isOver && (
-                            <span className="badge text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30">
-                              Over budget
-                            </span>
-                          )}
-                          {isWarning && (
-                            <span className="badge text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30">
-                              {Math.round(percentage)}% used
-                            </span>
-                          )}
-                        </span>
-                        <span className="font-medium text-gray-700 dark:text-gray-200">{formatCurrency(allocation.amount)}</span>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 font-medium">
+                            <span>{icon}</span> {name}
+                          </span>
+                          <span className={`font-semibold ${isOver ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                            {Math.round(percentage)}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-1">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isOver ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-primary-500'
+                            }`}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-gray-400 dark:text-gray-500">
+                          <span>{formatCurrency(spend)} of {formatCurrency(allocation.amount)}</span>
+                          <span className={remaining < 0 ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
+                            {remaining < 0 ? `Over by ${formatCurrency(Math.abs(remaining))}` : `${formatCurrency(remaining)} left`}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -140,6 +193,19 @@ const BudgetList = ({ budgets, categories, transactions, tags, onEdit, onDelete,
           })}
         </div>
       )}
+
+      {/* Weekly stacked bar chart(s) — one per budget shown (in practice
+          just the single month BudgetsPage has navigated to), placed
+          full-width below the card grid rather than inside each narrow
+          card so the chart has room to breathe. */}
+      {budgets.filter((b) => b.allocations.length > 0).map((budget) => (
+        <div key={budget.id} className="card p-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            Weekly Breakdown · {MONTH_NAMES[budget.month - 1]} {budget.year}
+          </h3>
+          <BudgetWeeklyChart budget={budget} categories={categories} transactions={transactions} tags={tags} />
+        </div>
+      ))}
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}

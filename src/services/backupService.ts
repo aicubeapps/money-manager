@@ -14,11 +14,12 @@ import { fetchCategories } from './categoryService';
 import { fetchBudgets } from './budgetService';
 import { getTags } from './tagService';
 import { findOrCreateFolder, listFilesInFolder, uploadJsonFile, downloadFileContent, deleteFile } from './googleDriveService';
+import { toast } from '../components/common/Toast';
 import type { Account, Transaction, Category, Budget, Tag } from '../types';
 
 export const BACKUP_SCHEMA_VERSION = 1;
 const BACKUP_FOLDER_NAME = 'ExpenseTracker Backups';
-const MAX_BACKUPS_KEPT = 8;
+const MAX_BACKUPS_KEPT = 3;
 const LAST_BACKUP_KEY = 'driveLastBackupAt';
 const AUTO_BACKUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -95,10 +96,19 @@ export const uploadBackup = async (userId: string): Promise<BackupSummary> => {
   const now = new Date();
   setLastBackupAt(now);
 
-  // Prune: keep the most recent MAX_BACKUPS_KEPT, delete the rest.
+  // Prune: keep the most recent MAX_BACKUPS_KEPT, delete the rest. files is
+  // newest-first (listFilesInFolder orders by createdTime desc), so slicing
+  // from MAX_BACKUPS_KEPT onward is exactly the oldest excess backups.
   const files = await listFilesInFolder(folderId);
   const toDelete = files.slice(MAX_BACKUPS_KEPT);
-  await Promise.all(toDelete.map((f) => deleteFile(f.id).catch(() => {})));
+  if (toDelete.length > 0) {
+    await Promise.all(toDelete.map((f) => deleteFile(f.id).catch(() => {})));
+    toast.info(
+      toDelete.length === 1
+        ? 'Deleted 1 old backup to keep the most recent 3'
+        : `Deleted ${toDelete.length} old backups to keep the most recent 3`
+    );
+  }
 
   return { fileId: file.id, fileName: file.name, createdAt: file.createdTime };
 };
