@@ -5,6 +5,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useAuth } from '../hooks/useAuth';
 import BudgetList from '../components/budgets/BudgetList';
 import BudgetForm from '../components/budgets/BudgetForm';
+import BudgetTemplateModal, { type TemplateBudgetInput } from '../components/budgets/BudgetTemplateModal';
 import { createBudget, updateBudget, deleteBudget } from '../services/budgetService';
 import { toast } from '../components/common/Toast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -24,6 +25,28 @@ const BudgetsPage = () => {
   const { categories } = useCategories();
   const [showForm, setShowForm] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  const handleApplyTemplate = async (items: TemplateBudgetInput[]) => {
+    if (!currentUser) return;
+    try {
+      await Promise.all(
+        items.map((item) =>
+          createBudget(currentUser.uid, {
+            categoryId: item.categoryId,
+            amount: item.amount,
+            month: selectedMonth,
+            year: selectedYear,
+          })
+        )
+      );
+      toast.success(`${items.length} budget${items.length > 1 ? 's' : ''} created`);
+      setShowTemplates(false);
+    } catch (err) {
+      console.error('Error applying template:', err);
+      toast.error('Failed to apply template');
+    }
+  };
 
   const handlePrevMonth = () => {
     if (selectedMonth === 1) {
@@ -99,6 +122,12 @@ const BudgetsPage = () => {
         </button>
       </div>
 
+      <div className="flex justify-end mb-3">
+        <button onClick={() => setShowTemplates(true)} className="btn-secondary text-sm">
+          Apply template
+        </button>
+      </div>
+
       <BudgetList
         budgets={budgets}
         categories={categories}
@@ -106,6 +135,14 @@ const BudgetsPage = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+      {showTemplates && (
+        <BudgetTemplateModal
+          categories={categories}
+          existingBudgets={budgets}
+          onApply={handleApplyTemplate}
+          onCancel={() => setShowTemplates(false)}
+        />
+      )}
       {showForm && (
         <BudgetForm
           budget={editingBudget}
