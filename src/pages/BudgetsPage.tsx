@@ -6,10 +6,15 @@ import { useTransactions } from '../hooks/useTransactions';
 import { useTags } from '../hooks/useTags';
 import { useAuth } from '../hooks/useAuth';
 import BudgetList from '../components/budgets/BudgetList';
-import BudgetForm from '../components/budgets/BudgetForm';
+import BudgetForm, { type BudgetFormData } from '../components/budgets/BudgetForm';
+import BudgetAddChooser from '../components/budgets/BudgetAddChooser';
+import BudgetTemplatePicker from '../components/budgets/BudgetTemplatePicker';
+import { useBudgetTemplates } from '../hooks/useBudgetTemplates';
+import { createBudgetTemplate, updateBudgetTemplate, deleteBudgetTemplate } from '../services/budgetTemplateService';
+import type { BudgetTemplate } from '../types/budgetTemplate';
 import { createBudget, updateBudget, deleteBudget } from '../services/budgetService';
 import { isCategoryOvershot } from '../utils/budgetSpend';
-import { mergeAllocations } from '../utils/budget';
+import { mergeAllocations, sumAllocations } from '../utils/budget';
 import { toast } from '../components/common/Toast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import type { Budget } from '../types';
@@ -33,6 +38,11 @@ const BudgetsPage = () => {
   const { tags } = useTags();
   const [showForm, setShowForm] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const { templates } = useBudgetTemplates();
+  const [showChooser, setShowChooser] = useState(false);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<BudgetTemplate | null>(null);
 
   // One-time-per-session overshoot toast, scoped to the actual current month
   // (not whatever month is being navigated to below). We track which
@@ -97,7 +107,8 @@ const BudgetsPage = () => {
   // inflated total). Since `budgets` here is already scoped to
   // selectedMonth/selectedYear by useBudgets, budgets[0] (if present) IS the
   // existing doc for the month being viewed — open it for editing instead.
-  const handleAdd = () => { setEditingBudget(budgets[0] ?? null); setShowForm(true); };
+  const handleAdd = () => setShowChooser(true);
+  const handleAddSingle = () => { setShowChooser(false); setEditingBudget(budgets[0] ?? null); setShowForm(true); };
   const handleEdit = (budget: Budget) => { setEditingBudget(budget); setShowForm(true); };
 
   const handleSave = async (data: { month: number; year: number; amount: number; allocations: { categoryId: string; amount: number }[] }) => {
@@ -122,6 +133,63 @@ const BudgetsPage = () => {
     } catch (err) {
       console.error('Error saving budget:', err);
       toast.error('Failed to save budget');
+    }
+  };
+
+  const handleSaveTemplate = async (data: BudgetFormData) => {
+    if (!currentUser) return;
+    const payload = { name: data.name || '', amount: data.amount, allocations: data.allocations };
+    try {
+      if (editingTemplate) {
+        await updateBudgetTemplate(editingTemplate.id, payload);
+        toast.success('Template updated');
+      } else {
+        await createBudgetTemplate(currentUser.uid, payload);
+        toast.success('Template saved');
+      }
+      setShowTemplateForm(false);
+      setEditingTemplate(null);
+    } catch (err) {
+      console.error('Error saving template:', err);
+      toast.error('Failed to save template');
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    try {
+      await deleteBudgetTemplate(id);
+      toast.success('Template deleted');
+      if (templates.length <= 1) setShowTemplatePicker(false);
+    } catch {
+      toast.error('Failed to delete template');
+    }
+  };
+
+  // Applies a template to the month being viewed. If the month already has a
+  // budget, the template's allocations are merged into it (template amounts win
+  // for shared categories) and the overall amount is raised only if needed so
+  // allocations never exceed it. Otherwise a new budget is created.
+  const handleApplyTemplate = async (template: BudgetTemplate) => {
+    if (!currentUser) return;
+    try {
+      const existing = budgets[0];
+      if (existing) {
+        const merged = mergeAllocations(existing.allocations, template.allocations);
+        const amount = Math.max(existing.amount, sumAllocations(merged));
+        await updateBudget(existing.id, { allocations: merged, amount, month: selectedMonth, year: selectedYear });
+      } else {
+        await createBudget(currentUser.uid, {
+          month: selectedMonth,
+          year: selectedYear,
+          amount: template.amount,
+          allocations: template.allocations,
+        });
+      }
+      toast.success(`Template "${template.name}" applied`);
+      setShowTemplatePicker(false);
+    } catch (err) {
+      console.error('Error applying template:', err);
+      toast.error('Failed to apply template');
     }
   };
 
@@ -169,6 +237,35 @@ const BudgetsPage = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+      {showChooser && (
+        <BudgetAddChooser
+          hasTemplates={templates.length > 0}
+          onUseTemplate={() => { setShowChooser(false); setShowTemplatePicker(true); }}
+          onCreateTemplate={() => { setShowChooser(false); setEditingTemplate(null); setShowTemplateForm(true); }}
+          onAddSingle={handleAddSingle}
+          onCancel={() => setShowChooser(false)}
+        />
+      )}
+      {showTemplatePicker && (
+        <BudgetTemplatePicker
+          templates={templates}
+          categories={categories}
+          monthLabel={`${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
+          onApply={handleApplyTemplate}
+          onEdit={(t) => { setEditingTemplate(t); setShowTemplateForm(true); }}
+          onDelete={handleDeleteTemplate}
+          onCancel={() => setShowTemplatePicker(false)}
+        />
+      )}
+      {showTemplateForm && (
+        <BudgetForm
+          templateMode
+          template={editingTemplate}
+          categories={categories}
+          onSave={handleSaveTemplate}
+          onCancel={() => { setShowTemplateForm(false); setEditingTemplate(null); }}
+        />
+      )}
       {showForm && (
         <BudgetForm
           budget={editingBudget}

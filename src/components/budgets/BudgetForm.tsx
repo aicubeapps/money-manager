@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { HiX, HiPlus, HiTrash } from 'react-icons/hi';
 import type { Budget, Category } from '../../types';
+import type { BudgetTemplate } from '../../types/budgetTemplate';
 import { formatCurrency } from '../../utils/format';
 import { getMiscAmount } from '../../utils/budget';
 
@@ -17,28 +18,36 @@ const budgetSchema = z.object({
   year: z.number().min(2000).max(2100),
   amount: z.number().min(0.01, 'Amount must be greater than 0'),
   allocations: z.array(allocationSchema),
+  name: z.string().optional(),
 });
 
-type FormData = z.infer<typeof budgetSchema>;
+export type BudgetFormData = z.infer<typeof budgetSchema>;
+type FormData = BudgetFormData;
 
 interface BudgetFormProps {
   budget?: Budget | null;
+  // Template mode: same form, but saves a named, month-independent template
+  templateMode?: boolean;
+  template?: BudgetTemplate | null;
   categories: Category[];
   onSave: (data: FormData) => void;
   onCancel: () => void;
 }
 
-const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) => {
+const BudgetForm = ({ budget, templateMode = false, template, categories, onSave, onCancel }: BudgetFormProps) => {
   const {
     register,
     control,
     handleSubmit,
     reset,
     watch,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(budgetSchema),
-    defaultValues: budget
+    defaultValues: template
+      ? { name: template.name, month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: template.amount, allocations: template.allocations }
+      : budget
       ? { month: budget.month, year: budget.year, amount: budget.amount, allocations: budget.allocations }
       : { month: new Date().getMonth() + 1, year: new Date().getFullYear(), allocations: [] },
   });
@@ -51,6 +60,14 @@ const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) =
     }
   }, [budget, reset]);
 
+  const submit = handleSubmit((data) => {
+    if (templateMode && !data.name?.trim()) {
+      setError('name', { message: 'Template name is required' });
+      return;
+    }
+    onSave({ ...data, name: data.name?.trim() });
+  });
+
   const expenseCategories = categories.filter((c) => c.type === 'expense' && c.active);
 
   const overallAmount = watch('amount') || 0;
@@ -62,7 +79,7 @@ const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) =
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-slide-up">
         <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 rounded-t-2xl">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            {budget ? 'Edit Budget' : 'Add Budget'}
+            {templateMode ? (template ? 'Edit Budget Template' : 'Create Budget Template') : budget ? 'Edit Budget' : 'Add Budget'}
           </h2>
           <button onClick={onCancel} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
             <HiX className="w-5 h-5 text-gray-500" />
@@ -70,6 +87,15 @@ const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) =
         </div>
 
         <div className="p-5 space-y-4">
+          {templateMode && (
+            <div>
+              <label className="form-label">Template name</label>
+              <input {...register('name')} className="form-input" placeholder="e.g. Monthly household" />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+            </div>
+          )}
+
+          {!templateMode && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="form-label">Month</label>
@@ -90,6 +116,7 @@ const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) =
               </select>
             </div>
           </div>
+          )}
 
           <div>
             <label className="form-label">Overall Monthly Budget (₹)</label>
@@ -173,11 +200,11 @@ const BudgetForm = ({ budget, categories, onSave, onCancel }: BudgetFormProps) =
             <button type="button" onClick={onCancel} className="btn-secondary flex-1 justify-center">Cancel</button>
             <button
               type="submit"
-              onClick={handleSubmit(onSave)}
+              onClick={submit}
               disabled={isSubmitting}
               className="btn-primary flex-1 justify-center disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : budget ? 'Save changes' : 'Add Budget'}
+              {isSubmitting ? 'Saving...' : templateMode ? (template ? 'Save changes' : 'Save as template') : budget ? 'Save changes' : 'Add Budget'}
             </button>
           </div>
         </div>

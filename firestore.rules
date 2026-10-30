@@ -42,6 +42,11 @@ service cloud.firestore {
       allow read, delete: if isOwner(resource.data.userId);
       allow update: if isOwnerUpdate();
     }
+    match /budgetTemplates/{docId} {
+      allow create: if isOwnerCreate();
+      allow read, delete: if isOwner(resource.data.userId);
+      allow update: if isOwnerUpdate();
+    }
     match /reports/{docId} {
       allow create: if isOwnerCreate();
       allow read, delete: if isOwner(resource.data.userId);
